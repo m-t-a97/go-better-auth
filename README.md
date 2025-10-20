@@ -11,7 +11,7 @@ A comprehensive, framework-agnostic authentication and authorization library for
 - 🔄 **Password Reset** - Secure password reset functionality
 - 🏗️ **Clean Architecture** - Separation of concerns with domain, usecase, delivery, and infrastructure layers
 - 🔌 **Plugin System** - Extensible architecture for adding custom functionality
-- 💾 **Multiple Database Support** - PostgreSQL, MySQL, SQLite (via adapters)
+- 💾 **Multiple Database Support** - PostgreSQL, SQLite (via adapters), more coming soon...
 - 🛡️ **Security First** - CSRF protection, secure cookies, rate limiting support
 - 📦 **Zero Dependencies** - Minimal external dependencies, production-ready
 

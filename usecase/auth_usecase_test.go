@@ -327,7 +327,7 @@ func TestSignInEmail(t *testing.T) {
 
 	// Test successful signin
 	t.Run("successful signin", func(t *testing.T) {
-		input := &usecase.SignInEmailInput{
+		input := &domain.SignInEmailInput{
 			Email:    "signin@example.com",
 			Password: "SecurePass123!",
 		}
@@ -348,7 +348,7 @@ func TestSignInEmail(t *testing.T) {
 
 	// Test invalid password
 	t.Run("invalid password", func(t *testing.T) {
-		input := &usecase.SignInEmailInput{
+		input := &domain.SignInEmailInput{
 			Email:    "signin@example.com",
 			Password: "wrongpassword",
 		}
@@ -361,7 +361,7 @@ func TestSignInEmail(t *testing.T) {
 
 	// Test non-existent user
 	t.Run("non-existent user", func(t *testing.T) {
-		input := &usecase.SignInEmailInput{
+		input := &domain.SignInEmailInput{
 			Email:    "nonexistent@example.com",
 			Password: "password",
 		}
@@ -862,7 +862,7 @@ func TestChangePasswordWithValidation(t *testing.T) {
 	}
 
 	// Verify the new password works
-	signInOutput, err := authUseCase.SignInEmail(ctx, &usecase.SignInEmailInput{
+	signInOutput, err := authUseCase.SignInEmail(ctx, &domain.SignInEmailInput{
 		Email:    "changepass@example.com",
 		Password: newPassword,
 	})

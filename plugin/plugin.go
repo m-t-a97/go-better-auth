@@ -3,7 +3,6 @@ package plugin
 import (
 	"net/http"
 
-	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/usecase"
 )
 
@@ -24,10 +23,10 @@ type Plugin interface {
 
 // PluginConfig holds configuration passed to plugins
 type PluginConfig struct {
-	UserRepo         domain.UserRepository
-	SessionRepo      domain.SessionRepository
-	AccountRepo      domain.AccountRepository
-	VerificationRepo domain.VerificationRepository
+	UserRepo         usecase.UserRepository
+	SessionRepo      usecase.SessionRepository
+	AccountRepo      usecase.AccountRepository
+	VerificationRepo usecase.VerificationRepository
 	AuthUseCase      *usecase.AuthUseCase
 	BaseURL          string
 }
@@ -83,9 +82,9 @@ func (p *TwoFactorPlugin) Initialize(config *PluginConfig) error {
 }
 
 func (p *TwoFactorPlugin) RegisterRoutes(router Router) {
-	router.Post("/api/auth/2fa/enable", p.handleEnable2FA)
-	router.Post("/api/auth/2fa/verify", p.handleVerify2FA)
-	router.Post("/api/auth/2fa/disable", p.handleDisable2FA)
+	router.Post("/auth/2fa/enable", p.handleEnable2FA)
+	router.Post("/auth/2fa/verify", p.handleVerify2FA)
+	router.Post("/auth/2fa/disable", p.handleDisable2FA)
 }
 
 func (p *TwoFactorPlugin) handleEnable2FA(w http.ResponseWriter, r *http.Request) {

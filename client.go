@@ -146,10 +146,10 @@ type GoBetterAuth struct {
 	config           *Config
 	authUseCase      *usecase.AuthUseCase
 	oauthUseCase     *usecase.OAuthUseCase
-	userRepo         domain.UserRepository
-	sessionRepo      domain.SessionRepository
-	accountRepo      domain.AccountRepository
-	verificationRepo domain.VerificationRepository
+	userRepo         usecase.UserRepository
+	sessionRepo      usecase.SessionRepository
+	accountRepo      usecase.AccountRepository
+	verificationRepo usecase.VerificationRepository
 }
 
 // New creates a new Better Auth instance
@@ -168,10 +168,10 @@ func New(config *Config) (*GoBetterAuth, error) {
 	}
 
 	// Initialize database repositories
-	var userRepo domain.UserRepository
-	var sessionRepo domain.SessionRepository
-	var accountRepo domain.AccountRepository
-	var verificationRepo domain.VerificationRepository
+	var userRepo usecase.UserRepository
+	var sessionRepo usecase.SessionRepository
+	var accountRepo usecase.AccountRepository
+	var verificationRepo usecase.VerificationRepository
 	var db *sql.DB
 
 	if config.Database.DB != nil {
@@ -360,10 +360,10 @@ func (ba *GoBetterAuth) OAuthUseCase() *usecase.OAuthUseCase {
 
 // Repositories returns the domain repositories
 func (ba *GoBetterAuth) Repositories() (
-	userRepo domain.UserRepository,
-	sessionRepo domain.SessionRepository,
-	accountRepo domain.AccountRepository,
-	verificationRepo domain.VerificationRepository,
+	userRepo usecase.UserRepository,
+	sessionRepo usecase.SessionRepository,
+	accountRepo usecase.AccountRepository,
+	verificationRepo usecase.VerificationRepository,
 ) {
 	return ba.userRepo, ba.sessionRepo, ba.accountRepo, ba.verificationRepo
 }

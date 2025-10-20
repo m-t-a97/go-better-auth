@@ -43,18 +43,18 @@ type OAuthUserInfo struct {
 
 // OAuthUseCase handles OAuth authentication
 type OAuthUseCase struct {
-	userRepo    domain.UserRepository
-	accountRepo domain.AccountRepository
-	sessionRepo domain.SessionRepository
+	userRepo    UserRepository
+	accountRepo AccountRepository
+	sessionRepo SessionRepository
 	providers   map[string]OAuthProvider
 	config      *AuthConfig
 }
 
 // NewOAuthUseCase creates a new OAuth use case
 func NewOAuthUseCase(
-	userRepo domain.UserRepository,
-	accountRepo domain.AccountRepository,
-	sessionRepo domain.SessionRepository,
+	userRepo UserRepository,
+	accountRepo AccountRepository,
+	sessionRepo SessionRepository,
 	config *AuthConfig,
 ) *OAuthUseCase {
 	return &OAuthUseCase{
@@ -82,7 +82,7 @@ func (uc *OAuthUseCase) GetAuthURL(providerID, state, redirectURI string) (strin
 }
 
 // HandleCallback handles the OAuth callback
-func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, redirectURI string) (*SignInEmailOutput, error) {
+func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, redirectURI string) (*domain.SignInEmailOutput, error) {
 	provider, ok := uc.providers[providerID]
 	if !ok {
 		return nil, fmt.Errorf("provider not found: %s", providerID)
@@ -120,7 +120,7 @@ func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, re
 		return nil, err
 	}
 
-	return &SignInEmailOutput{
+	return &domain.SignInEmailOutput{
 		User:    user,
 		Session: session,
 	}, nil

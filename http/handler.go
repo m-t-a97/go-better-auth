@@ -146,7 +146,7 @@ func (h *AuthHandler) signInEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := h.authUseCase.SignInEmail(r.Context(), &usecase.SignInEmailInput{
+	output, err := h.authUseCase.SignInEmail(r.Context(), &domain.SignInEmailInput{
 		Email:    req.Email,
 		Password: req.Password,
 	})

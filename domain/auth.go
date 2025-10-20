@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"time"
 )
 
@@ -54,40 +53,17 @@ type Verification struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-// UserRepository defines the interface for user data operations
-type UserRepository interface {
-	Create(ctx context.Context, user *User) error
-	FindByID(ctx context.Context, id string) (*User, error)
-	FindByEmail(ctx context.Context, email string) (*User, error)
-	Update(ctx context.Context, user *User) error
-	Delete(ctx context.Context, id string) error
+// SignInEmailInput represents the input for email signin
+type SignInEmailInput struct {
+	Email      string  `json:"email"`
+	Password   string  `json:"password"`
+	RememberMe bool    `json:"remember_me"`
+	IPAddress  *string `json:"ip_address"`
+	UserAgent  *string `json:"user_agent"`
 }
 
-// SessionRepository defines the interface for session data operations
-type SessionRepository interface {
-	Create(ctx context.Context, session *Session) error
-	FindByToken(ctx context.Context, token string) (*Session, error)
-	FindByUserID(ctx context.Context, userID string) ([]*Session, error)
-	Update(ctx context.Context, session *Session) error
-	Delete(ctx context.Context, id string) error
-	DeleteByToken(ctx context.Context, token string) error
-	DeleteExpired(ctx context.Context) error
-}
-
-// AccountRepository defines the interface for account data operations
-type AccountRepository interface {
-	Create(ctx context.Context, account *Account) error
-	FindByUserIDAndProvider(ctx context.Context, userID, providerID string) (*Account, error)
-	FindByProviderAccountID(ctx context.Context, providerID, accountID string) (*Account, error)
-	Update(ctx context.Context, account *Account) error
-	Delete(ctx context.Context, id string) error
-	ListByUserID(ctx context.Context, userID string) ([]*Account, error)
-}
-
-// VerificationRepository defines the interface for verification token operations
-type VerificationRepository interface {
-	Create(ctx context.Context, verification *Verification) error
-	FindByIdentifierAndValue(ctx context.Context, identifier, value string) (*Verification, error)
-	Delete(ctx context.Context, id string) error
-	DeleteExpired(ctx context.Context) error
+// SignInEmailOutput represents the output of email signin
+type SignInEmailOutput struct {
+	User    *User    `json:"user"`
+	Session *Session `json:"session"`
 }

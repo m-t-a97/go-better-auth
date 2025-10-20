@@ -2,9 +2,9 @@ package domain
 
 // AuthError represents an authentication error
 type AuthError struct {
-	Code    string
-	Message string
-	Status  int
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Status  int    `json:"status"`
 }
 
 func (e *AuthError) Error() string {

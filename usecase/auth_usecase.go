@@ -35,10 +35,10 @@ type AuthConfig struct {
 
 // AuthUseCase handles authentication business logic
 type AuthUseCase struct {
-	userRepo         domain.UserRepository
-	sessionRepo      domain.SessionRepository
-	accountRepo      domain.AccountRepository
-	verificationRepo domain.VerificationRepository
+	userRepo         UserRepository
+	sessionRepo      SessionRepository
+	accountRepo      AccountRepository
+	verificationRepo VerificationRepository
 	passwordHasher   PasswordHasher
 	emailSender      EmailSender
 	config           *AuthConfig
@@ -46,10 +46,10 @@ type AuthUseCase struct {
 
 // NewAuthUseCase creates a new authentication use case
 func NewAuthUseCase(
-	userRepo domain.UserRepository,
-	sessionRepo domain.SessionRepository,
-	accountRepo domain.AccountRepository,
-	verificationRepo domain.VerificationRepository,
+	userRepo UserRepository,
+	sessionRepo SessionRepository,
+	accountRepo AccountRepository,
+	verificationRepo VerificationRepository,
 	passwordHasher PasswordHasher,
 	emailSender EmailSender,
 	config *AuthConfig,
@@ -73,16 +73,16 @@ func NewAuthUseCase(
 
 // SignUpEmailInput represents the input for email signup
 type SignUpEmailInput struct {
-	Email    string
-	Password string
-	Name     string
-	Image    *string
+	Email    string  `json:"email"`
+	Password string  `json:"password"`
+	Name     string  `json:"name"`
+	Image    *string `json:"image"`
 }
 
 // SignUpEmailOutput represents the output of email signup
 type SignUpEmailOutput struct {
-	User    *domain.User
-	Session *domain.Session
+	User    *domain.User    `json:"user"`
+	Session *domain.Session `json:"session"`
 }
 
 // validatePassword checks password policy compliance
@@ -212,7 +212,7 @@ func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *SignUpEmailInput)
 			return nil, err
 		}
 
-		url := uc.config.BaseURL + "/api/auth/verify-email?token=" + token
+		url := uc.config.BaseURL + "/auth/verify-email?token=" + token
 		if err := uc.emailSender.SendVerificationEmail(ctx, user.Email, token, url); err != nil {
 			// Log error but don't fail signup
 		}
@@ -233,23 +233,8 @@ func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *SignUpEmailInput)
 	}, nil
 }
 
-// SignInEmailInput represents the input for email signin
-type SignInEmailInput struct {
-	Email      string
-	Password   string
-	RememberMe bool
-	IPAddress  *string
-	UserAgent  *string
-}
-
-// SignInEmailOutput represents the output of email signin
-type SignInEmailOutput struct {
-	User    *domain.User
-	Session *domain.Session
-}
-
 // SignInEmail authenticates a user with email and password
-func (uc *AuthUseCase) SignInEmail(ctx context.Context, input *SignInEmailInput) (*SignInEmailOutput, error) {
+func (uc *AuthUseCase) SignInEmail(ctx context.Context, input *domain.SignInEmailInput) (*domain.SignInEmailOutput, error) {
 	// Find user
 	user, err := uc.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
@@ -270,7 +255,7 @@ func (uc *AuthUseCase) SignInEmail(ctx context.Context, input *SignInEmailInput)
 			}
 
 			uc.verificationRepo.Create(ctx, verification)
-			url := uc.config.BaseURL + "/api/auth/verify-email?token=" + token
+			url := uc.config.BaseURL + "/auth/verify-email?token=" + token
 			uc.emailSender.SendVerificationEmail(ctx, user.Email, token, url)
 		}
 		return nil, domain.ErrEmailNotVerified
@@ -298,7 +283,7 @@ func (uc *AuthUseCase) SignInEmail(ctx context.Context, input *SignInEmailInput)
 		return nil, err
 	}
 
-	return &SignInEmailOutput{
+	return &domain.SignInEmailOutput{
 		User:    user,
 		Session: session,
 	}, nil
@@ -408,7 +393,7 @@ func (uc *AuthUseCase) SendVerificationEmail(ctx context.Context, email string) 
 		return err
 	}
 
-	url := uc.config.BaseURL + "/api/auth/verify-email?token=" + token
+	url := uc.config.BaseURL + "/auth/verify-email?token=" + token
 	return uc.emailSender.SendVerificationEmail(ctx, email, token, url)
 }
 
@@ -472,7 +457,7 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		return err
 	}
 
-	url := uc.config.BaseURL + "/reset-password?token=" + token
+	url := uc.config.BaseURL + "/auth/reset-password?token=" + token
 	return uc.emailSender.SendPasswordResetEmail(ctx, email, token, url)
 }
 

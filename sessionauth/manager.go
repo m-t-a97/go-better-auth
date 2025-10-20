@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/usecase"
 )
 
 const (
@@ -19,8 +20,8 @@ const (
 
 // Manager handles session validation and cookie management
 type Manager struct {
-	sessionRepo domain.SessionRepository
-	userRepo    domain.UserRepository
+	sessionRepo usecase.SessionRepository
+	userRepo    usecase.UserRepository
 	cookieName  string
 	sameSite    http.SameSite
 	secure      bool // Should be true in production (HTTPS)
@@ -36,7 +37,7 @@ type ManagerConfig struct {
 }
 
 // NewManager creates a new session manager
-func NewManager(sessionRepo domain.SessionRepository, userRepo domain.UserRepository, config *ManagerConfig) *Manager {
+func NewManager(sessionRepo usecase.SessionRepository, userRepo usecase.UserRepository, config *ManagerConfig) *Manager {
 	if config == nil {
 		config = &ManagerConfig{}
 	}

@@ -9,26 +9,26 @@ help: ## Display this help screen
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 # Build commands
-build: ## Build the application
-	@echo "Building $(APP_NAME)..."
-	@go build -o $(BINARY_PATH) $(MAIN_PATH)
-	@echo "Build complete: $(BINARY_PATH)"
+build: ## Build the package (library)
+	@echo "Building $(APP_NAME) package..."
+	@go build ./...
+	@echo "Build complete!"
 
-build-linux: ## Build for Linux
+build-linux: ## Build example for Linux (if main.go exists)
 	@echo "Building for Linux..."
-	@GOOS=linux GOARCH=amd64 go build -o $(BINARY_PATH)-linux $(MAIN_PATH)
+	@[ -f cmd/main.go ] && GOOS=linux GOARCH=amd64 go build -o $(BINARY_PATH)-linux ./cmd || echo "No cmd/main.go found"
 
-build-windows: ## Build for Windows
+build-windows: ## Build example for Windows (if main.go exists)
 	@echo "Building for Windows..."
-	@GOOS=windows GOARCH=amd64 go build -o $(BINARY_PATH).exe $(MAIN_PATH)
+	@[ -f cmd/main.go ] && GOOS=windows GOARCH=amd64 go build -o $(BINARY_PATH).exe ./cmd || echo "No cmd/main.go found"
 
-build-mac: ## Build for macOS
+build-mac: ## Build example for macOS (if main.go exists)
 	@echo "Building for macOS..."
-	@GOOS=darwin GOARCH=amd64 go build -o $(BINARY_PATH)-mac $(MAIN_PATH)
+	@[ -f cmd/main.go ] && GOOS=darwin GOARCH=amd64 go build -o $(BINARY_PATH)-mac ./cmd || echo "No cmd/main.go found"
 
 # Run commands
-run: ## Run the application
-	@go run $(MAIN_PATH)
+run: ## Run example (if cmd/main.go exists)
+	@[ -f cmd/main.go ] && go run ./cmd || echo "No cmd/main.go found. This is a library package."
 
 dev: ## Run with hot reload (requires air)
 	@air

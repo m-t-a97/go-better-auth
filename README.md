@@ -28,7 +28,13 @@ A comprehensive, framework-agnostic authentication and authorization library for
 go get github.com/m-t-a97/go-better-auth
 ```
 
-### Basic Usage
+### Basic Usage - Two Approaches
+
+Go Better Auth can be used in two ways:
+
+#### Option 1: Standalone Framework (Simplest)
+
+Use go-better-auth as a complete authentication framework with built-in HTTP handlers:
 
 ```go
 package main
@@ -36,111 +42,200 @@ package main
 import (
     "log"
     "net/http"
-    "time"
     
-    "github.com/m-t-a97/go-better-auth/pkg/gobetterauth"
+    "github.com/m-t-a97/go-better-auth"
 )
 
 func main() {
-    // Configure Go Better Auth
     config := &gobetterauth.Config{
         BaseURL: "http://localhost:3000",
-        
         Database: gobetterauth.DatabaseConfig{
-            Provider:         "postgres",
-            ConnectionString: "postgres://user:password@localhost/dbname?sslmode=disable",
+            Provider:         "sqlite",
+            ConnectionString: ":memory:",
         },
-        
         EmailAndPassword: gobetterauth.EmailPasswordConfig{
             Enabled:    true,
             AutoSignIn: true,
-            SendVerificationEmail: func(email, token, url string) error {
-                // Implement your email sending logic
-                return nil
-            },
-        },
-        
-        Session: gobetterauth.SessionConfig{
-            ExpiresIn: 7 * 24 * time.Hour,
-        },
-        
-        SocialProviders: gobetterauth.SocialProvidersConfig{
-            Google: &gobetterauth.GoogleProviderConfig{
-                ClientID:     "your-client-id",
-                ClientSecret: "your-client-secret",
-                RedirectURL:  "http://localhost:3000/api/auth/oauth/google/callback",
-            },
         },
     }
     
-    // Initialize Go Better Auth
     auth, err := gobetterauth.New(config)
     if err != nil {
         log.Fatal(err)
     }
     
-    // Mount auth routes
+    // Mount built-in HTTP handlers for all auth endpoints
     http.Handle("/api/auth/", auth.Handler())
     
-    // Start server
-    log.Println("Server starting on :3000")
     log.Fatal(http.ListenAndServe(":3000", nil))
 }
 ```
 
+#### Option 2: Custom HTTP Handlers (Maximum Control)
+
+Extract use cases and implement custom HTTP handlers with your chosen framework:
+
+```go
+package main
+
+import (
+    "log"
+    "net/http"
+    
+    "github.com/go-chi/chi/v5"
+    "github.com/m-t-a97/go-better-auth"
+)
+
+func main() {
+    config := &gobetterauth.Config{
+        BaseURL: "http://localhost:3000",
+        Database: gobetterauth.DatabaseConfig{
+            Provider:         "sqlite",
+            ConnectionString: ":memory:",
+        },
+    }
+    
+    auth, err := gobetterauth.New(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // Get use cases and implement custom handlers
+    authUseCase := auth.AuthUseCase()
+    
+    router := chi.NewRouter()
+    router.Post("/api/auth/sign-up", func(w http.ResponseWriter, r *http.Request) {
+        // Custom implementation
+    })
+    
+    log.Fatal(http.ListenAndServe(":3000", router))
+}
+```
+
+**Choose Option 1 for simplicity, or Option 2 for flexibility with your preferred framework (chi, gin, echo, fiber, etc.).**
+
 ### Detailed Setup and Initialization
 
-Go Better Auth is initialized via the `gobetterauth.New(config)` function, which takes a `Config` struct. The library follows a layered architecture: the domain layer defines core entities and interfaces, the usecase layer handles business logic, the delivery layer manages HTTP interactions, and the infrastructure layer connects to databases and external services.
+Go Better Auth is initialized via the `gobetterauth.New(config)` function, which takes a `Config` struct. The library provides **both**:
 
-1. **Configuration**: Populate the `Config` struct with your settings. Required fields include `BaseURL` and `Database`. Optional fields like `EmailAndPassword`, `Session`, and `SocialProviders` enable specific features.
-2. **Database Setup**: Run migrations from the `migrations/` folder to set up tables for users, sessions, accounts, and verifications. Supported providers: PostgreSQL, SQLite.
-3. **Email Integration**: For features like verification or password reset, provide callback functions (e.g., `SendVerificationEmail`) to handle email sending.
-4. **Session Handling**: Sessions are managed via secure cookies or tokens. Customize expiration in `SessionConfig`.
-5. **OAuth Setup**: Configure client IDs, secrets, and redirect URLs for social providers. The library handles OAuth flows automatically.
-6. **Plugins**: Optionally add plugins via the `Plugins` field in config for custom routes or logic.
-7. **Rate Limiting and MFA**: See dedicated sections below for setup.
-8. **Initialization**: Call `gobetterauth.New(config)` to create an auth instance. Mount routes with `auth.Handler()`. The library is thread-safe and ready for production.
+1. **Built-in HTTP Handlers**: Use `auth.Handler()` to get an `http.Handler` that implements all authentication endpoints
+2. **Use Cases & Repositories**: Extract use cases with `auth.AuthUseCase()` and implement custom handlers
+
+**Architecture Overview:**
+```
+Option 1: Standalone         Option 2: Custom Handlers
+┌─────────────────────────┐ ┌──────────────────────────────┐
+│ Your Application        │ │ Your Application              │
+│ (any HTTP server)       │ │ (chi, gin, echo, fiber, etc.) │
+└────────────┬────────────┘ └──────────────┬─────────────────┘
+             │ mounts                       │ uses
+             │                              │
+       ┌─────▼──────────┐         ┌────────▼──────────┐
+       │ auth.Handler() │         │ Use Cases (API)   │
+       │ (http.Handler) │         │ • AuthUseCase     │
+       └─────┬──────────┘         │ • OAuthUseCase    │
+             │                    └────────┬──────────┘
+             ▼                             │
+       ┌──────────────────┐         ┌─────▼──────────────┐
+       │ Domain Layer     │         │ Custom Handlers    │
+       │ Repositories     │         │ (Your Framework)   │
+       │ Use Cases        │         └─────┬──────────────┘
+       │ Services         │               │
+       └─────┬────────────┘               ▼
+             │               ┌──────────────────────┐
+             └──────┬────────►│ Domain Layer        │
+                    │         │ Repositories        │
+                    │         │ Use Cases           │
+                    │         │ Services            │
+                    │         └──────────────────────┘
+                    │
+            ┌───────▼────────────┐
+            │ Database Adapters  │
+            │ (PostgreSQL, etc)  │
+            └────────────────────┘
+```
+
+**Setup Steps:**
+
+1. **Configuration**: Populate the `Config` struct with your settings. Required: `BaseURL`, `Database`
+2. **Database Setup**: Run migrations from `migrations/` folder
+3. **Email Integration**: Provide callbacks for email sending
+4. **Session Configuration**: Customize expiration in `SessionConfig`
+5. **OAuth Setup**: Configure provider credentials and redirect URLs
+6. **Initialization**: Call `gobetterauth.New(config)`
+7. **Choose your approach**:
+   - **Option 1**: Use `auth.Handler()` for built-in handlers
+   - **Option 2**: Use `auth.AuthUseCase()` for custom implementation
+8. **Deploy**: The library is thread-safe and production-ready
 
 ## 📚 Core Concepts
 
 ### How the Library Works
 
-Go Better Auth operates as a middleware-like library that integrates into your Go HTTP server. It provides endpoints for authentication flows, manages state via sessions, and enforces security through hashing, CSRF protection, and optional rate limiting.
+Go Better Auth provides both **standalone HTTP handlers** and **use cases** for your custom implementation. Choose the approach that fits your needs:
 
-- **Authentication Flow**: Users sign up/in via email/password or OAuth. Sessions are created and stored securely. Verification and resets are handled via email tokens.
-- **Security Mechanisms**: Passwords are hashed with scrypt. Sessions use secure tokens. CSRF tokens protect against cross-site requests.
-- **Extensibility**: Use plugins to add custom endpoints. Adapters allow database swapping.
-- **Error Handling**: Domain-specific errors are returned for invalid credentials, expired sessions, etc.
+**Approach 1: Standalone (Built-in Handlers)**
+- Use `auth.Handler()` to get a complete `http.Handler` implementing all auth endpoints
+- Works with the standard library `net/http` package
+- Minimal setup required
+- Perfect for small to medium projects
+
+**Approach 2: Custom Implementation (Use Cases)**
+- Extract use cases with `auth.AuthUseCase()`, `auth.OAuthUseCase()`, etc.
+- Implement your own HTTP handlers with your preferred framework (chi, gin, echo, fiber, etc.)
+- Maximum flexibility and control
+- Perfect for large projects with custom requirements
+
+**Core Features:**
+- **Authentication Flow**: Email/password signup and signin with optional email verification
+- **OAuth Support**: Automatic OAuth flow handling for Google, GitHub, Discord, and generic providers
+- **Session Management**: Secure session creation, validation, and refresh
+- **Security**: Password hashing (scrypt), CSRF protection, secure cookies
+- **Extensibility**: Use cases and repositories are fully customizable
+- **Database**: Multiple database support via adapters (PostgreSQL, SQLite)
 
 #### Authentication Methods
 
 ##### Email & Password
 
+Call the use case from your HTTP handler:
+
 ```go
-config := &gobetterauth.Config{
-    EmailAndPassword: gobetterauth.EmailPasswordConfig{
-        Enabled:                  true,
-        RequireEmailVerification: false,
-        AutoSignIn:               true,
-    },
-}
+authUseCase := auth.AuthUseCase()
+
+// Sign up
+output, err := authUseCase.SignUpEmail(ctx, &usecase.SignUpEmailInput{
+    Email:    "user@example.com",
+    Password: "secure123",
+})
+
+// Sign in
+output, err := authUseCase.SignInEmail(ctx, &usecase.SignInEmailInput{
+    Email:    "user@example.com",
+    Password: "secure123",
+})
 ```
 
-**Client Usage:**
-```bash
-# Sign Up
-curl -X POST http://localhost:3000/api/auth/sign-up/email \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"secure123","name":"John Doe"}'
-
-# Sign In
-curl -X POST http://localhost:3000/api/auth/sign-in/email \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"secure123"}'
-
-# Sign Out
-curl -X POST http://localhost:3000/api/auth/sign-out \
-  -H "Cookie: better-auth.session_token=your-token"
+**Example HTTP Handler (chi):**
+```go
+router.Post("/api/auth/sign-up/email", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Email    string `json:"email"`
+        Password string `json:"password"`
+    }
+    
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    // Call use case
+    output, err := authUseCase.SignUpEmail(r.Context(), &usecase.SignUpEmailInput{
+        Email:    req.Email,
+        Password: req.Password,
+    })
+    
+    // Return response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(output)
+})
 ```
 
 #### OAuth Social Providers
@@ -151,113 +246,316 @@ Supported providers:
 - **Discord** - OAuth 2.0
 - **Generic OAuth2** - Extensible for any provider
 
+Call the use case from your HTTP handler:
+
 ```go
-SocialProviders: gobetterauth.SocialProvidersConfig{
-    Google: &gobetterauth.GoogleProviderConfig{
-        ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-        ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-        RedirectURL:  "http://localhost:3000/api/auth/oauth/google/callback",
-    },
-    GitHub: &gobetterauth.GitHubProviderConfig{
-        ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-        ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-        RedirectURL:  "http://localhost:3000/api/auth/oauth/github/callback",
-    },
-}
+oauthUseCase := auth.OAuthUseCase()
+
+// Get authorization URL
+authURL, err := oauthUseCase.GetAuthURL(
+    "google",                                          // provider
+    "state-token",                                      // CSRF protection
+    "http://localhost:3000/api/auth/oauth/google/callback",
+)
+
+// Handle callback
+output, err := oauthUseCase.Authenticate(ctx, &usecase.OAuthAuthenticateInput{
+    Provider: "google",
+    Code:     "auth-code",
+    State:    "state-token",
+})
+
+// Refresh tokens
+refreshOutput, err := oauthUseCase.RefreshToken(ctx, &usecase.RefreshTokenInput{
+    UserID:   user.ID,
+    Provider: "google",
+})
 ```
 
-**Client Usage:**
-```bash
-# Initiate OAuth flow
-GET http://localhost:3000/api/auth/oauth/google
+**Example HTTP Handler (chi):**
+```go
+// Initiate OAuth flow
+router.Get("/api/auth/oauth/{provider}", func(w http.ResponseWriter, r *http.Request) {
+    provider := chi.URLParam(r, "provider")
+    authURL, _ := oauthUseCase.GetAuthURL(provider, "state", "callback")
+    http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+})
 
-# Callback (handled automatically)
-GET http://localhost:3000/api/auth/oauth/google/callback?code=...
+// Handle OAuth callback
+router.Get("/api/auth/oauth/{provider}/callback", func(w http.ResponseWriter, r *http.Request) {
+    code := r.URL.Query().Get("code")
+    state := r.URL.Query().Get("state")
+    
+    output, _ := oauthUseCase.Authenticate(r.Context(), &usecase.OAuthAuthenticateInput{
+        Provider: chi.URLParam(r, "provider"),
+        Code:     code,
+        State:    state,
+    })
+    
+    json.NewEncoder(w).Encode(output)
+})
 ```
 
 ### Session Management
 
+Call the use case to manage sessions:
+
 ```go
+authUseCase := auth.AuthUseCase()
+
 // Get current session
-session, user, err := auth.AuthUseCase().GetSession(ctx, token)
+session, user, err := authUseCase.GetSession(ctx, token)
 if err != nil {
-    // Handle error
+    // Handle error (session expired, invalid token, etc.)
 }
 
 // Sign out (invalidate session)
-err = auth.AuthUseCase().SignOut(ctx, token)
+err = authUseCase.SignOut(ctx, token)
+
+// Refresh session
+output, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+    Token: sessionToken,
+})
+```
+
+**Example HTTP Handler (chi):**
+```go
+router.Get("/api/auth/session", func(w http.ResponseWriter, r *http.Request) {
+    // Get session from cookie or header
+    token := r.Header.Get("Authorization")
+    
+    session, user, err := authUseCase.GetSession(r.Context(), token)
+    if err != nil {
+        http.Error(w, "Invalid session", http.StatusUnauthorized)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "user":    user,
+        "session": session,
+    })
+})
+
+router.Post("/api/auth/sign-out", func(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("Authorization")
+    authUseCase.SignOut(r.Context(), token)
+    w.WriteHeader(http.StatusOK)
+})
 ```
 
 ### Email Verification
 
+Enable email verification in config and implement the email sending callback:
+
 ```go
-EmailAndPassword: gobetterauth.EmailPasswordConfig{
-    RequireEmailVerification: true,
-    SendVerificationEmail: func(email, token, url string) error {
-        // Send email with verification link
-        return sendEmail(email, "Verify your email", url)
+config := &gobetterauth.Config{
+    EmailAndPassword: gobetterauth.EmailPasswordConfig{
+        RequireEmailVerification: true,
+        SendVerificationEmail: func(email, token, url string) error {
+            // Send verification email to user
+            return sendEmail(email, "Verify your email", url)
+        },
     },
 }
 ```
 
-**API Endpoints:**
-```bash
-# Send verification email
-POST /api/auth/send-verification-email
-{"email": "user@example.com"}
+Then implement HTTP handlers to call the use cases:
 
-# Verify email
-GET /api/auth/verify-email?token=verification-token
+```go
+authUseCase := auth.AuthUseCase()
+
+// Send verification email
+router.Post("/api/auth/send-verification-email", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Email string `json:"email"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    err := authUseCase.SendVerificationEmail(r.Context(), &usecase.SendVerificationEmailInput{
+        Email: req.Email,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+})
+
+// Verify email
+router.Get("/api/auth/verify-email", func(w http.ResponseWriter, r *http.Request) {
+    token := r.URL.Query().Get("token")
+    
+    output, err := authUseCase.VerifyEmail(r.Context(), &usecase.VerifyEmailInput{
+        Token: token,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(output)
+})
 ```
 
 ### Password Reset
 
+Enable password reset in config:
+
 ```go
-EmailAndPassword: gobetterauth.EmailPasswordConfig{
-    SendPasswordResetEmail: func(email, token, url string) error {
-        // Send password reset email
-        return sendEmail(email, "Reset your password", url)
+config := &gobetterauth.Config{
+    EmailAndPassword: gobetterauth.EmailPasswordConfig{
+        SendPasswordResetEmail: func(email, token, url string) error {
+            // Send password reset email to user
+            return sendEmail(email, "Reset your password", url)
+        },
     },
 }
 ```
 
-**API Endpoints:**
-```bash
-# Request password reset
-POST /api/auth/request-password-reset
-{"email": "user@example.com"}
+Implement HTTP handlers to call the use cases:
 
-# Reset password
-POST /api/auth/reset-password
-{"token": "reset-token", "newPassword": "newsecure123"}
+```go
+authUseCase := auth.AuthUseCase()
 
-# Change password (requires authentication)
-POST /api/auth/change-password
-{"currentPassword": "old123", "newPassword": "new123", "revokeOtherSessions": true}
+// Request password reset
+router.Post("/api/auth/request-password-reset", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Email string `json:"email"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    err := authUseCase.RequestPasswordReset(r.Context(), &usecase.RequestPasswordResetInput{
+        Email: req.Email,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+})
+
+// Reset password
+router.Post("/api/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Token       string `json:"token"`
+        NewPassword string `json:"newPassword"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    err := authUseCase.ResetPassword(r.Context(), &usecase.ResetPasswordInput{
+        Token:       req.Token,
+        NewPassword: req.NewPassword,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+})
+
+// Change password (requires authentication)
+router.Post("/api/auth/change-password", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        CurrentPassword    string `json:"currentPassword"`
+        NewPassword        string `json:"newPassword"`
+        RevokeOtherSessions bool  `json:"revokeOtherSessions"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    token := r.Header.Get("Authorization") // Get session token
+    
+    err := authUseCase.ChangePassword(r.Context(), &usecase.ChangePasswordInput{
+        Token:               token,
+        CurrentPassword:     req.CurrentPassword,
+        NewPassword:         req.NewPassword,
+        RevokeOtherSessions: req.RevokeOtherSessions,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+})
 ```
 
 ## ⚡ Rate Limiting
 
-Go Better Auth supports Redis-based rate limiting to prevent abuse on authentication endpoints.
+Go Better Auth provides a rate limiting middleware that you can apply to your HTTP handlers to prevent abuse on authentication endpoints.
 
 ### Setup
 
-1. Install and run Redis.
+1. Install and run Redis (or configure your backend).
 2. Add to config:
 
 ```go
 config := &gobetterauth.Config{
     // ...existing config...
     RateLimit: gobetterauth.RateLimitConfig{
-        Enabled: true,
-        RedisURL: "redis://localhost:6379",
+        Enabled:     true,
+        RedisURL:    "redis://localhost:6379",
         MaxRequests: 10, // per window
-        Window: 1 * time.Minute,
+        Window:      1 * time.Minute,
     },
 }
 ```
 
-3. The library automatically applies limits to sign-up, sign-in, and OAuth endpoints. Exceeded requests return 429 status.
+3. Get the rate limiting middleware from the library and apply to your routes:
+
+```go
+import "github.com/m-t-a97/go-better-auth/ratelimit"
+
+// Get repositories to pass to rate limiting middleware
+repos := auth.Repositories()
+
+// Create rate limiting middleware
+rateLimitMiddleware := ratelimit.NewMiddleware(&ratelimit.Config{
+    Enabled:     true,
+    RedisURL:    "redis://localhost:6379",
+    MaxRequests: 10,
+    Window:      1 * time.Minute,
+})
+
+// Apply to your routes
+router.Post("/api/auth/sign-up/email", rateLimitMiddleware.Handler(handleSignUpEmail))
+router.Post("/api/auth/sign-in/email", rateLimitMiddleware.Handler(handleSignInEmail))
+router.Get("/api/auth/oauth/{provider}", rateLimitMiddleware.Handler(handleOAuthCallback))
+```
+
+Exceeded rate limits return HTTP 429 (Too Many Requests).
+
+**Example:**
+```go
+func handleSignUpEmail(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Email    string `json:"email"`
+        Password string `json:"password"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    output, err := authUseCase.SignUpEmail(r.Context(), &usecase.SignUpEmailInput{
+        Email:    req.Email,
+        Password: req.Password,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(output)
+}
+
+// Apply rate limiting to the handler
+router.Post("/api/auth/sign-up/email", rateLimitMiddleware.Handler(handleSignUpEmail))
+```
 
 ## 🔐 Multi-Factor Authentication (MFA)
 
@@ -277,18 +575,67 @@ config := &gobetterauth.Config{
 }
 ```
 
-2. After sign-in, users can enable MFA via `/api/auth/enable-mfa` (requires session). This generates a secret and QR code.
-3. On subsequent logins, provide TOTP code via `/api/auth/verify-mfa`.
+2. Get the MFA use case and implement HTTP handlers:
 
-**API Endpoints:**
-```bash
-# Enable MFA
-POST /api/auth/enable-mfa
-# Returns: {"secret": "...", "qrCodeURL": "..."}
+```go
+mfaUseCase := auth.MFAUseCase()
 
-# Verify MFA (during login)
-POST /api/auth/verify-mfa
-{"code": "123456"}
+// Enable MFA
+router.Post("/api/auth/enable-mfa", func(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("Authorization") // Session token
+    
+    output, err := mfaUseCase.EnableMFA(r.Context(), &usecase.EnableMFAInput{
+        Token: token,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "secret":     output.Secret,
+        "qrCodeURL":  output.QRCodeURL,
+    })
+})
+
+// Verify MFA during login
+router.Post("/api/auth/verify-mfa", func(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Code string `json:"code"`
+        // Other sign-in fields...
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    output, err := mfaUseCase.VerifyMFA(r.Context(), &usecase.VerifyMFAInput{
+        Code: req.Code,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(output)
+})
+
+// Disable MFA
+router.Post("/api/auth/disable-mfa", func(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("Authorization")
+    
+    err := mfaUseCase.DisableMFA(r.Context(), &usecase.DisableMFAInput{
+        Token: token,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.WriteHeader(http.StatusOK)
+})
 ```
 
 ## 🔄 Token Refresh & Management
@@ -297,9 +644,11 @@ Go Better Auth provides comprehensive token refresh functionality for both OAuth
 
 ### OAuth Token Refresh
 
-Automatically refresh OAuth access tokens when expired:
+Call the use case to refresh OAuth access tokens:
 
 ```go
+oauthUseCase := auth.OAuthUseCase()
+
 // Refresh OAuth access token
 output, err := oauthUseCase.RefreshToken(ctx, &usecase.RefreshTokenInput{
     UserID:   user.ID,
@@ -316,26 +665,42 @@ refreshToken := output.RefreshToken
 expiresIn := output.ExpiresIn
 ```
 
-**API Endpoint:**
-```bash
-# Refresh OAuth tokens (requires authentication)
-POST /api/auth/oauth/{provider}/refresh
-Authorization: Bearer {session_token}
-
-# Response:
-{
-  "accessToken": "new-access-token",
-  "refreshToken": "refresh-token",
-  "idToken": "id-token",
-  "expiresIn": 3600
-}
+**Example HTTP Handler (chi):**
+```go
+router.Post("/api/auth/oauth/{provider}/refresh", func(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("Authorization")
+    
+    // Get user from session
+    session, user, _ := authUseCase.GetSession(r.Context(), token)
+    
+    // Refresh OAuth tokens
+    output, err := oauthUseCase.RefreshToken(r.Context(), &usecase.RefreshTokenInput{
+        UserID:   user.ID,
+        Provider: chi.URLParam(r, "provider"),
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "accessToken":  output.AccessToken,
+        "refreshToken": output.RefreshToken,
+        "idToken":      output.IDToken,
+        "expiresIn":    output.ExpiresIn,
+    })
+})
 ```
 
 ### Session Refresh
 
-Extend session expiration automatically:
+Extend session expiration:
 
 ```go
+authUseCase := auth.AuthUseCase()
+
 // Refresh session
 output, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
     Token: sessionToken,
@@ -349,22 +714,26 @@ if err != nil {
 newExpiresAt := output.Session.ExpiresAt
 ```
 
-**API Endpoint:**
-```bash
-# Refresh session
-POST /api/auth/session/refresh
-Authorization: Bearer {session_token}
-
-# Response:
-{
-  "user": {...},
-  "session": {
-    "id": "...",
-    "token": "...",
-    "expiresAt": "2025-10-21T10:00:00Z",
-    ...
-  }
-}
+**Example HTTP Handler (chi):**
+```go
+router.Post("/api/auth/session/refresh", func(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("Authorization")
+    
+    output, err := authUseCase.RefreshSession(r.Context(), &usecase.RefreshSessionInput{
+        Token: token,
+    })
+    
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusUnauthorized)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "user":    output.User,
+        "session": output.Session,
+    })
+})
 ```
 
 ### Clean Expired Sessions
@@ -372,6 +741,8 @@ Authorization: Bearer {session_token}
 Automatically clean up expired sessions:
 
 ```go
+authUseCase := auth.AuthUseCase()
+
 // Clean expired sessions from database
 err := authUseCase.CleanExpiredSessions(ctx)
 ```
@@ -385,7 +756,7 @@ Go Better Auth includes full JWT support with RS256 signing for enhanced securit
 ### Setup
 
 ```go
-import "github.com/m-t-a97/go-better-auth/pkg/jwt"
+import "github.com/m-t-a97/go-better-auth/jwt"
 
 // Create JWT manager with auto-generated RSA keys
 jwtManager, err := jwt.NewManager("https://example.com", []string{"https://example.com"})
@@ -439,65 +810,55 @@ remaining := jwtManager.GetRemainingTime(tokenString)
 
 ## 🏗️ Architecture
 
-Go Better Auth follows **Clean Architecture** principles:
+Go Better Auth follows **Clean Architecture** principles with a dual-mode design:
 
 ```
-go-better-auth/
-├── internal/                 # Internal packages
-│   ├── domain/              # Domain layer (entities, interfaces)
-│   │   ├── models.go
-│   │   └── errors.go
-│   ├── usecase/             # Business logic layer
-│   │   ├── auth_usecase.go
-│   │   └── oauth_usecase.go
-│   ├── delivery/            # Delivery layer (HTTP, gRPC, etc.)
-│   │   └── http/
-│   │       └── handler.go
-│   └── infrastructure/      # Infrastructure layer (DB, external services)
-│       └── postgres/
-│           └── adapter.go
-└── pkg/                     # Public packages
-    ├── gobetterauth/          # Main library interface
-    │   └── gobetterauth.go
-    └── plugin/              # Plugin system
-        └── plugin.go
+┌────────────────────────────────────────────────────┐
+│          Go Better Auth Library                    │
+├────────────────────────────────────────────────────┤
+│  Mode 1: Standalone HTTP Handlers                  │
+│  • Built-in http.Handler implementation            │
+│  • auth.Handler() returns ready-to-use handler     │
+│  • Mount on any standard HTTP server               │
+├────────────────────────────────────────────────────┤
+│  Mode 2: Custom Use Cases                          │
+│  • auth.AuthUseCase() - authentication logic       │
+│  • auth.OAuthUseCase() - OAuth handling            │
+│  • Implement handlers with your framework          │
+├────────────────────────────────────────────────────┤
+│  Core Components                                   │
+│  • Domain Models (User, Session, Account, etc.)    │
+│  • Use Cases (business logic)                      │
+│  • Repositories (data persistence interfaces)      │
+│  • Services (CSRF, Rate Limiting, MFA, JWT)        │
+├────────────────────────────────────────────────────┤
+│  Database Adapters                                 │
+│  • PostgreSQL • SQLite • Extensible                │
+└────────────────────────────────────────────────────┘
 ```
 
-### Layers
+**Key Design Principles:**
 
-1. **Domain Layer** (`internal/domain/`)
-   - Core entities: User, Session, Account, Verification
-   - Repository interfaces
-   - Domain errors
+1. **Dual-Mode**: Both standalone handlers AND use cases available
+2. **Framework-Agnostic Core**: Use cases work with any framework  
+3. **Standard Library First**: Handlers implement `net/http.Handler` interface
+4. **Clean Separation**: Business logic separate from HTTP concerns
+5. **Extensible**: Database adapters, custom handlers, plugins
 
-2. **Use Case Layer** (`internal/usecase/`)
-   - Business logic for authentication flows
-   - OAuth provider implementations
-   - Password hashing utilities
-
-3. **Delivery Layer** (`internal/delivery/`)
-   - HTTP handlers and routes
-   - Request/response models
-   - Middleware
-
-4. **Infrastructure Layer** (`internal/infrastructure/`)
-   - Database adapters (PostgreSQL, MySQL, SQLite)
-   - External service integrations
-
-5. **Public API** (`pkg/`)
-   - GoBetterAuth configuration and builder
-   - Plugin system interface
+**Choose Your Mode:**
+- **Standalone** (`auth.Handler()`): Use built-in handlers for quick projects
+- **Custom** (`auth.AuthUseCase()`): Implement handlers with your preferred framework (chi, gin, echo, fiber, etc.)
 
 ## 🔌 Plugin System
 
-Create custom plugins to extend functionality:
+Create custom plugins to extend the library with additional business logic:
 
 ```go
 package main
 
 import (
-    "net/http"
-    "github.com/m-t-a97/go-better-auth/pkg/plugin"
+    "context"
+    "github.com/m-t-a97/go-better-auth/plugin"
 )
 
 type CustomPlugin struct {
@@ -515,14 +876,25 @@ func (p *CustomPlugin) Initialize(config *plugin.PluginConfig) error {
     return nil
 }
 
-func (p *CustomPlugin) RegisterRoutes(router plugin.Router) {
-    router.Post("/api/auth/custom-action", p.handleCustomAction)
+func (p *CustomPlugin) OnUserSignUp(ctx context.Context, userID string) error {
+    // Custom logic when user signs up
+    // e.g., send welcome email, create profile, etc.
+    return nil
 }
 
-func (p *CustomPlugin) handleCustomAction(w http.ResponseWriter, r *http.Request) {
-    // Custom logic
+func (p *CustomPlugin) OnUserSignIn(ctx context.Context, userID string) error {
+    // Custom logic when user signs in
+    // e.g., log activity, update last login, etc.
+    return nil
+}
+
+func (p *CustomPlugin) OnOAuthSuccess(ctx context.Context, userID, provider string) error {
+    // Custom logic after successful OAuth
+    return nil
 }
 ```
+
+Plugins are instantiated and passed to the Go Better Auth config during initialization.
 
 ## 💾 Database Adapters
 

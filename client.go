@@ -11,6 +11,7 @@ import (
 	"github.com/m-t-a97/go-better-auth/csrf"
 	"github.com/m-t-a97/go-better-auth/domain"
 	httphandler "github.com/m-t-a97/go-better-auth/http"
+	"github.com/m-t-a97/go-better-auth/sessionauth"
 	"github.com/m-t-a97/go-better-auth/usecase"
 )
 
@@ -364,6 +365,12 @@ func (ba *GoBetterAuth) Repositories() (
 	verificationRepo domain.VerificationRepository,
 ) {
 	return ba.userRepo, ba.sessionRepo, ba.accountRepo, ba.verificationRepo
+}
+
+// SessionAuth returns a session authentication middleware
+// This middleware can be used to protect routes and authenticate requests
+func (ba *GoBetterAuth) SessionAuth() *sessionauth.Middleware {
+	return sessionauth.NewMiddleware(ba.sessionRepo, ba.userRepo)
 }
 
 // Handler returns an http.Handler for all authentication endpoints

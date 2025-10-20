@@ -38,6 +38,11 @@ var (
 		Message: "Session has expired",
 		Status:  401,
 	}
+	ErrSessionNotFound = &AuthError{
+		Code:    "session_not_found",
+		Message: "Session not found",
+		Status:  401,
+	}
 	ErrEmailNotVerified = &AuthError{
 		Code:    "email_not_verified",
 		Message: "Email address not verified",

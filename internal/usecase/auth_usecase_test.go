@@ -454,3 +454,216 @@ func TestSessionManagement(t *testing.T) {
 		}
 	})
 }
+
+func TestRefreshSession(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	sessionRepo := NewMockSessionRepository()
+	accountRepo := NewMockAccountRepository()
+	verificationRepo := NewMockVerificationRepository()
+	passwordHasher := usecase.NewScryptPasswordHasher()
+
+	authUseCase := usecase.NewAuthUseCase(
+		userRepo,
+		sessionRepo,
+		accountRepo,
+		verificationRepo,
+		passwordHasher,
+		nil,
+		&usecase.AuthConfig{
+			BaseURL:                  "http://localhost:3000",
+			SessionExpiresIn:         24 * time.Hour,
+			RequireEmailVerification: false,
+			AutoSignIn:               true,
+		},
+	)
+
+	ctx := context.Background()
+
+	// Create user and session
+	user := &domain.User{
+		ID:            "user-123",
+		Email:         "refresh@example.com",
+		Name:          "Refresh User",
+		EmailVerified: true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	userRepo.Create(ctx, user)
+
+	session := &domain.Session{
+		ID:        "session-123",
+		UserID:    user.ID,
+		Token:     usecase.GenerateToken(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	sessionRepo.Create(ctx, session)
+
+	// Get original expiration time
+	originalExpiresAt := session.ExpiresAt
+
+	// Wait a bit
+	time.Sleep(100 * time.Millisecond)
+
+	// Refresh session
+	output, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+		Token: session.Token,
+	})
+
+	if err != nil {
+		t.Fatalf("RefreshSession failed: %v", err)
+	}
+
+	if output.Session == nil {
+		t.Fatal("Session should not be nil")
+	}
+
+	if output.User == nil {
+		t.Fatal("User should not be nil")
+	}
+
+	// Check that expiration was extended
+	if output.Session.ExpiresAt.Before(originalExpiresAt) {
+		t.Error("Session expiration should be extended")
+	}
+
+	// Session should be usable
+	_, _, err = authUseCase.GetSession(ctx, session.Token)
+	if err != nil {
+		t.Fatalf("Session should be usable after refresh: %v", err)
+	}
+}
+
+func TestRefreshExpiredSession(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	sessionRepo := NewMockSessionRepository()
+	accountRepo := NewMockAccountRepository()
+	verificationRepo := NewMockVerificationRepository()
+	passwordHasher := usecase.NewScryptPasswordHasher()
+
+	authUseCase := usecase.NewAuthUseCase(
+		userRepo,
+		sessionRepo,
+		accountRepo,
+		verificationRepo,
+		passwordHasher,
+		nil,
+		&usecase.AuthConfig{
+			BaseURL:                  "http://localhost:3000",
+			SessionExpiresIn:         24 * time.Hour,
+			RequireEmailVerification: false,
+			AutoSignIn:               true,
+		},
+	)
+
+	ctx := context.Background()
+
+	// Create user and expired session
+	user := &domain.User{
+		ID:            "user-123",
+		Email:         "expired@example.com",
+		Name:          "Expired User",
+		EmailVerified: true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	userRepo.Create(ctx, user)
+
+	session := &domain.Session{
+		ID:        "session-123",
+		UserID:    user.ID,
+		Token:     usecase.GenerateToken(),
+		ExpiresAt: time.Now().Add(-1 * time.Hour), // Expired
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	sessionRepo.Create(ctx, session)
+
+	// Try to refresh expired session
+	_, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+		Token: session.Token,
+	})
+
+	if err != domain.ErrSessionExpired {
+		t.Errorf("Expected ErrSessionExpired, got %v", err)
+	}
+}
+
+func TestCleanExpiredSessions(t *testing.T) {
+	userRepo := NewMockUserRepository()
+	sessionRepo := NewMockSessionRepository()
+	accountRepo := NewMockAccountRepository()
+	verificationRepo := NewMockVerificationRepository()
+	passwordHasher := usecase.NewScryptPasswordHasher()
+
+	authUseCase := usecase.NewAuthUseCase(
+		userRepo,
+		sessionRepo,
+		accountRepo,
+		verificationRepo,
+		passwordHasher,
+		nil,
+		&usecase.AuthConfig{
+			BaseURL:                  "http://localhost:3000",
+			SessionExpiresIn:         24 * time.Hour,
+			RequireEmailVerification: false,
+			AutoSignIn:               true,
+		},
+	)
+
+	ctx := context.Background()
+
+	// Create user
+	user := &domain.User{
+		ID:            "user-123",
+		Email:         "clean@example.com",
+		Name:          "Clean User",
+		EmailVerified: true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	userRepo.Create(ctx, user)
+
+	// Create multiple sessions - some expired, some valid
+	for i := 0; i < 3; i++ {
+		session := &domain.Session{
+			ID:        "session-" + string(rune(i)),
+			UserID:    user.ID,
+			Token:     usecase.GenerateToken(),
+			ExpiresAt: time.Now().Add(-1 * time.Hour), // All expired
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		sessionRepo.Create(ctx, session)
+	}
+
+	// Add a valid session
+	validSession := &domain.Session{
+		ID:        "session-valid",
+		UserID:    user.ID,
+		Token:     usecase.GenerateToken(),
+		ExpiresAt: time.Now().Add(24 * time.Hour), // Valid
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	sessionRepo.Create(ctx, validSession)
+
+	// Clean expired sessions
+	err := authUseCase.CleanExpiredSessions(ctx)
+	if err != nil {
+		t.Fatalf("CleanExpiredSessions failed: %v", err)
+	}
+
+	// Check that expired sessions were deleted
+	sessions, _ := sessionRepo.FindByUserID(ctx, user.ID)
+	if len(sessions) != 1 {
+		t.Errorf("Expected 1 session after cleanup, got %d", len(sessions))
+	}
+
+	// Verify the remaining session is the valid one
+	remainingSession, _ := sessionRepo.FindByToken(ctx, validSession.Token)
+	if remainingSession == nil {
+		t.Fatal("Valid session should still exist")
+	}
+}

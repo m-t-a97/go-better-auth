@@ -6,7 +6,7 @@ A comprehensive, framework-agnostic authentication and authorization library for
 
 - 🔑 **Email & Password Authentication** - Built-in support with secure password hashing (scrypt)
 - 🌐 **Social OAuth Providers** - Google, GitHub, Discord, and extensible generic OAuth2 support
-- 🔐 **Session Management** - Secure session handling with customizable expiration
+- 🔐 **Session Management** - Secure session handling with customizable expiration and refresh
 - ✉️ **Email Verification** - Optional email verification workflow
 - 🔄 **Password Reset** - Secure password reset functionality
 - 🏗️ **Clean Architecture** - Separation of concerns with domain, usecase, delivery, and infrastructure layers
@@ -16,6 +16,9 @@ A comprehensive, framework-agnostic authentication and authorization library for
 - 📦 **Zero Dependencies** - Minimal external dependencies, production-ready
 - ⚡ **Rate Limiting** - Redis-based rate limiting for API endpoints
 - 🔐 **Multi-Factor Authentication (MFA)** - Optional TOTP-based MFA for enhanced security
+- 🔄 **Refresh Tokens** - Full OAuth refresh token support with automatic expiration management
+- 🎫 **JWT Support** - RS256-based JWT token management with key rotation
+- 🔁 **Token Refresh Flow** - Automatic token refresh and session extension capabilities
 
 ## 🚀 Quick Start
 
@@ -286,6 +289,152 @@ POST /api/auth/enable-mfa
 # Verify MFA (during login)
 POST /api/auth/verify-mfa
 {"code": "123456"}
+```
+
+## 🔄 Token Refresh & Management
+
+Go Better Auth provides comprehensive token refresh functionality for both OAuth and session tokens.
+
+### OAuth Token Refresh
+
+Automatically refresh OAuth access tokens when expired:
+
+```go
+// Refresh OAuth access token
+output, err := oauthUseCase.RefreshToken(ctx, &usecase.RefreshTokenInput{
+    UserID:   user.ID,
+    Provider: "google",
+})
+
+if err != nil {
+    // Token expired or no refresh token available
+}
+
+// Use new tokens
+accessToken := output.AccessToken
+refreshToken := output.RefreshToken
+expiresIn := output.ExpiresIn
+```
+
+**API Endpoint:**
+```bash
+# Refresh OAuth tokens (requires authentication)
+POST /api/auth/oauth/{provider}/refresh
+Authorization: Bearer {session_token}
+
+# Response:
+{
+  "accessToken": "new-access-token",
+  "refreshToken": "refresh-token",
+  "idToken": "id-token",
+  "expiresIn": 3600
+}
+```
+
+### Session Refresh
+
+Extend session expiration automatically:
+
+```go
+// Refresh session
+output, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+    Token: sessionToken,
+})
+
+if err != nil {
+    // Session expired
+}
+
+// Session is now extended
+newExpiresAt := output.Session.ExpiresAt
+```
+
+**API Endpoint:**
+```bash
+# Refresh session
+POST /api/auth/session/refresh
+Authorization: Bearer {session_token}
+
+# Response:
+{
+  "user": {...},
+  "session": {
+    "id": "...",
+    "token": "...",
+    "expiresAt": "2025-10-21T10:00:00Z",
+    ...
+  }
+}
+```
+
+### Clean Expired Sessions
+
+Automatically clean up expired sessions:
+
+```go
+// Clean expired sessions from database
+err := authUseCase.CleanExpiredSessions(ctx)
+```
+
+Run this periodically (e.g., via cron job) to maintain database performance.
+
+## 🎫 JWT Token Management
+
+Go Better Auth includes full JWT support with RS256 signing for enhanced security.
+
+### Setup
+
+```go
+import "github.com/m-t-a97/go-better-auth/pkg/jwt"
+
+// Create JWT manager with auto-generated RSA keys
+jwtManager, err := jwt.NewManager("https://example.com", []string{"https://example.com"})
+
+// Or load from existing keys
+jwtManager, err := jwt.NewManagerWithKeys(privateKey, publicKey, "https://example.com", []string{"https://example.com"})
+
+// Export keys for persistent storage
+privateKey, publicKey, err := jwtManager.ExportKeys()
+```
+
+### Create Tokens
+
+```go
+// Create access and refresh token pair
+tokenPair, err := jwtManager.CreateTokenPair(
+    user.ID,
+    user.Email,
+    user.Name,
+    15 * time.Minute,  // access token expiry
+    7 * 24 * time.Hour, // refresh token expiry
+)
+
+// Or OAuth-specific tokens
+tokenPair, err := jwtManager.CreateOAuthTokenPair(
+    user.ID,
+    user.Email,
+    user.Name,
+    "google",               // provider
+    oauthAccountID,         // OAuth account ID
+    15 * time.Minute,
+    7 * 24 * time.Hour,
+)
+```
+
+### Verify & Refresh
+
+```go
+// Verify token validity
+claims, err := jwtManager.VerifyToken(tokenString)
+
+// Refresh access token using refresh token
+newAccessToken, err := jwtManager.RefreshAccessToken(refreshToken, 15 * time.Minute)
+
+// Check if token is expired
+isExpired := jwtManager.IsTokenExpired(tokenString)
+
+// Get remaining time
+remaining := jwtManager.GetRemainingTime(tokenString)
 ```
 
 ## 🏗️ Architecture

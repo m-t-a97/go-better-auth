@@ -126,6 +126,109 @@ func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, re
 	}, nil
 }
 
+// RefreshTokenInput represents the input for token refresh
+type RefreshTokenInput struct {
+	UserID    string
+	Provider  string
+	AccountID string
+}
+
+// RefreshTokenOutput represents the refreshed tokens
+type RefreshTokenOutput struct {
+	AccessToken  string
+	RefreshToken string
+	IDToken      string
+	ExpiresIn    int64
+}
+
+// RefreshToken refreshes an OAuth access token using the refresh token
+func (uc *OAuthUseCase) RefreshToken(ctx context.Context, input *RefreshTokenInput) (*RefreshTokenOutput, error) {
+	// Find the account by user ID and provider
+	account, err := uc.accountRepo.FindByUserIDAndProvider(ctx, input.UserID, input.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("account not found: %w", err)
+	}
+
+	if account.RefreshToken == nil || *account.RefreshToken == "" {
+		return nil, fmt.Errorf("no refresh token available for provider: %s", input.Provider)
+	}
+
+	// Check if refresh token has expired
+	if account.RefreshTokenExpiresAt != nil && time.Now().After(*account.RefreshTokenExpiresAt) {
+		return nil, fmt.Errorf("refresh token has expired")
+	}
+
+	// Get the provider
+	provider, ok := uc.providers[input.Provider]
+	if !ok {
+		return nil, fmt.Errorf("provider not found: %s", input.Provider)
+	}
+
+	// Use the provider's oauth2 config to refresh the token
+	var oauth2Config *oauth2.Config
+	switch p := provider.(type) {
+	case *GoogleProvider:
+		oauth2Config = p.config
+	case *GitHubProvider:
+		oauth2Config = p.config
+	case *DiscordProvider:
+		oauth2Config = p.config
+	case *GenericOAuthProvider:
+		oauth2Config = p.config
+	default:
+		return nil, fmt.Errorf("unsupported provider type for refresh")
+	}
+
+	// Create token source with refresh token
+	tokenSource := oauth2Config.TokenSource(ctx, &oauth2.Token{
+		RefreshToken: *account.RefreshToken,
+		Expiry:       time.Now().Add(-1 * time.Hour), // Force refresh
+	})
+
+	// Get new token
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+
+	// Update account with new tokens
+	account.AccessToken = &newToken.AccessToken
+	account.RefreshToken = &newToken.RefreshToken
+	account.UpdatedAt = time.Now()
+
+	if newToken.Expiry.After(time.Now()) {
+		expiresAt := newToken.Expiry
+		account.AccessTokenExpiresAt = &expiresAt
+	}
+
+	// For Google, update ID token if available
+	if extra, ok := newToken.Extra("id_token").(string); ok {
+		account.IDToken = &extra
+	}
+
+	// Save updated account
+	if err := uc.accountRepo.Update(ctx, account); err != nil {
+		return nil, fmt.Errorf("failed to save refreshed tokens: %w", err)
+	}
+
+	expiresIn := int64(0)
+	if newToken.Expiry.After(time.Now()) {
+		expiresIn = int64(time.Until(newToken.Expiry).Seconds())
+	}
+
+	idToken := ""
+	if account.IDToken != nil {
+		idToken = *account.IDToken
+	}
+
+	return &RefreshTokenOutput{
+		AccessToken:  newToken.AccessToken,
+		RefreshToken: newToken.RefreshToken,
+		IDToken:      idToken,
+		ExpiresIn:    expiresIn,
+	}, nil
+}
+
 func (uc *OAuthUseCase) findOrCreateOAuthUser(ctx context.Context, providerID string, userInfo *OAuthUserInfo, tokens *OAuthTokens) (*domain.User, *domain.Account, error) {
 	// Try to find existing account
 	account, err := uc.accountRepo.FindByProviderAccountID(ctx, providerID, userInfo.ID)

@@ -117,6 +117,7 @@ func (h *Handler) SetupRouter() *chi.Mux {
 
 		// Session
 		r.Get("/session", h.GetSession)
+		r.Post("/session/refresh", h.RefreshSession)
 
 		// Email verification
 		if emailLimiter, ok := h.rateLimiters["email"]; ok {
@@ -140,6 +141,7 @@ func (h *Handler) SetupRouter() *chi.Mux {
 		// OAuth
 		r.Get("/oauth/{provider}", h.OAuthAuthorize)
 		r.Get("/oauth/{provider}/callback", h.OAuthCallback)
+		r.With(h.SessionAuthMiddleware).Post("/oauth/{provider}/refresh", h.OAuthRefreshToken)
 
 		// MFA routes (only if MFA use case is configured)
 		if h.mfaUseCase != nil {
@@ -329,6 +331,29 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user":    user,
 		"session": session,
+	})
+}
+
+// RefreshSession extends the expiration of the current session
+func (h *Handler) RefreshSession(w http.ResponseWriter, r *http.Request) {
+	token := extractToken(r)
+	if token == "" {
+		respondError(w, domain.ErrInvalidToken)
+		return
+	}
+
+	output, err := h.authUseCase.RefreshSession(r.Context(), &usecase.RefreshSessionInput{
+		Token: token,
+	})
+
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"user":    output.User,
+		"session": output.Session,
 	})
 }
 
@@ -534,6 +559,35 @@ func (h *Handler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user":    output.User,
 		"session": output.Session,
+	})
+}
+
+// OAuthRefreshToken refreshes an OAuth access token
+func (h *Handler) OAuthRefreshToken(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+
+	// Get user from context (requires session auth)
+	user, ok := r.Context().Value("user").(*domain.User)
+	if !ok {
+		respondError(w, domain.ErrInvalidToken)
+		return
+	}
+
+	output, err := h.oauthUseCase.RefreshToken(r.Context(), &usecase.RefreshTokenInput{
+		UserID:   user.ID,
+		Provider: provider,
+	})
+
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"accessToken":  output.AccessToken,
+		"refreshToken": output.RefreshToken,
+		"idToken":      output.IDToken,
+		"expiresIn":    output.ExpiresIn,
 	})
 }
 

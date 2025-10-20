@@ -258,6 +258,55 @@ func (uc *AuthUseCase) GetSession(ctx context.Context, token string) (*domain.Se
 	return session, user, nil
 }
 
+// RefreshSessionInput represents the input for session refresh
+type RefreshSessionInput struct {
+	Token string
+}
+
+// RefreshSessionOutput represents the output of session refresh
+type RefreshSessionOutput struct {
+	Session *domain.Session
+	User    *domain.User
+}
+
+// RefreshSession extends the expiration time of a session
+func (uc *AuthUseCase) RefreshSession(ctx context.Context, input *RefreshSessionInput) (*RefreshSessionOutput, error) {
+	session, err := uc.sessionRepo.FindByToken(ctx, input.Token)
+	if err != nil {
+		return nil, domain.ErrInvalidToken
+	}
+
+	// Check if session is expired
+	if time.Now().After(session.ExpiresAt) {
+		uc.sessionRepo.Delete(ctx, session.ID)
+		return nil, domain.ErrSessionExpired
+	}
+
+	// Extend session expiration by the configured duration
+	session.ExpiresAt = time.Now().Add(uc.config.SessionExpiresIn)
+	session.UpdatedAt = time.Now()
+
+	if err := uc.sessionRepo.Update(ctx, session); err != nil {
+		return nil, err
+	}
+
+	// Get user
+	user, err := uc.userRepo.FindByID(ctx, session.UserID)
+	if err != nil {
+		return nil, domain.ErrUserNotFound
+	}
+
+	return &RefreshSessionOutput{
+		Session: session,
+		User:    user,
+	}, nil
+}
+
+// CleanExpiredSessions removes expired sessions from the database
+func (uc *AuthUseCase) CleanExpiredSessions(ctx context.Context) error {
+	return uc.sessionRepo.DeleteExpired(ctx)
+}
+
 // SignOut deletes a session
 func (uc *AuthUseCase) SignOut(ctx context.Context, token string) error {
 	return uc.sessionRepo.DeleteByToken(ctx, token)

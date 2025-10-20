@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -44,6 +45,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Extract the endpoint name from the URL path
 	// Handle both cases: with or without "/auth" prefix
 	endpoint := r.URL.Path
+	fmt.Printf("Endpoint: %s\n", endpoint)
 	endpoint = strings.TrimPrefix(endpoint, "/auth")
 	endpoint = strings.TrimPrefix(endpoint, "/")
 	endpoint = strings.TrimSuffix(endpoint, "/")

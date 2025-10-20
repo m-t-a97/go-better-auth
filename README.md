@@ -14,6 +14,8 @@ A comprehensive, framework-agnostic authentication and authorization library for
 - 💾 **Multiple Database Support** - PostgreSQL, SQLite (via adapters), more coming soon...
 - 🛡️ **Security First** - CSRF protection, secure cookies, rate limiting support
 - 📦 **Zero Dependencies** - Minimal external dependencies, production-ready
+- ⚡ **Rate Limiting** - Redis-based rate limiting for API endpoints
+- 🔐 **Multi-Factor Authentication (MFA)** - Optional TOTP-based MFA for enhanced security
 
 ## 🚀 Quick Start
 
@@ -83,11 +85,33 @@ func main() {
 }
 ```
 
+### Detailed Setup and Initialization
+
+Go Better Auth is initialized via the `gobetterauth.New(config)` function, which takes a `Config` struct. The library follows a layered architecture: the domain layer defines core entities and interfaces, the usecase layer handles business logic, the delivery layer manages HTTP interactions, and the infrastructure layer connects to databases and external services.
+
+1. **Configuration**: Populate the `Config` struct with your settings. Required fields include `BaseURL` and `Database`. Optional fields like `EmailAndPassword`, `Session`, and `SocialProviders` enable specific features.
+2. **Database Setup**: Run migrations from the `migrations/` folder to set up tables for users, sessions, accounts, and verifications. Supported providers: PostgreSQL, SQLite.
+3. **Email Integration**: For features like verification or password reset, provide callback functions (e.g., `SendVerificationEmail`) to handle email sending.
+4. **Session Handling**: Sessions are managed via secure cookies or tokens. Customize expiration in `SessionConfig`.
+5. **OAuth Setup**: Configure client IDs, secrets, and redirect URLs for social providers. The library handles OAuth flows automatically.
+6. **Plugins**: Optionally add plugins via the `Plugins` field in config for custom routes or logic.
+7. **Rate Limiting and MFA**: See dedicated sections below for setup.
+8. **Initialization**: Call `gobetterauth.New(config)` to create an auth instance. Mount routes with `auth.Handler()`. The library is thread-safe and ready for production.
+
 ## 📚 Core Concepts
 
-### Authentication Methods
+### How the Library Works
 
-#### Email & Password
+Go Better Auth operates as a middleware-like library that integrates into your Go HTTP server. It provides endpoints for authentication flows, manages state via sessions, and enforces security through hashing, CSRF protection, and optional rate limiting.
+
+- **Authentication Flow**: Users sign up/in via email/password or OAuth. Sessions are created and stored securely. Verification and resets are handled via email tokens.
+- **Security Mechanisms**: Passwords are hashed with scrypt. Sessions use secure tokens. CSRF tokens protect against cross-site requests.
+- **Extensibility**: Use plugins to add custom endpoints. Adapters allow database swapping.
+- **Error Handling**: Domain-specific errors are returned for invalid credentials, expired sessions, etc.
+
+#### Authentication Methods
+
+##### Email & Password
 
 ```go
 config := &gobetterauth.Config{
@@ -207,6 +231,61 @@ POST /api/auth/reset-password
 # Change password (requires authentication)
 POST /api/auth/change-password
 {"currentPassword": "old123", "newPassword": "new123", "revokeOtherSessions": true}
+```
+
+## ⚡ Rate Limiting
+
+Go Better Auth supports Redis-based rate limiting to prevent abuse on authentication endpoints.
+
+### Setup
+
+1. Install and run Redis.
+2. Add to config:
+
+```go
+config := &gobetterauth.Config{
+    // ...existing config...
+    RateLimit: gobetterauth.RateLimitConfig{
+        Enabled: true,
+        RedisURL: "redis://localhost:6379",
+        MaxRequests: 10, // per window
+        Window: 1 * time.Minute,
+    },
+}
+```
+
+3. The library automatically applies limits to sign-up, sign-in, and OAuth endpoints. Exceeded requests return 429 status.
+
+## 🔐 Multi-Factor Authentication (MFA)
+
+Optional TOTP-based MFA adds a second verification layer.
+
+### Setup
+
+1. Enable in config:
+
+```go
+config := &gobetterauth.Config{
+    // ...existing config...
+    MFA: gobetterauth.MFAConfig{
+        Enabled: true,
+        Issuer: "YourApp", // For TOTP apps like Google Authenticator
+    },
+}
+```
+
+2. After sign-in, users can enable MFA via `/api/auth/enable-mfa` (requires session). This generates a secret and QR code.
+3. On subsequent logins, provide TOTP code via `/api/auth/verify-mfa`.
+
+**API Endpoints:**
+```bash
+# Enable MFA
+POST /api/auth/enable-mfa
+# Returns: {"secret": "...", "qrCodeURL": "..."}
+
+# Verify MFA (during login)
+POST /api/auth/verify-mfa
+{"code": "123456"}
 ```
 
 ## 🏗️ Architecture

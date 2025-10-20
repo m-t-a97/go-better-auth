@@ -63,3 +63,38 @@ type OAuthProvider interface {
 	GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error)
 	GetProviderID() string
 }
+
+// SignUpUseCase defines the interface for user registration
+type SignUpUseCase interface {
+	SignUpEmail(ctx context.Context, input *domain.SignUpEmailInput) (*domain.SignUpEmailOutput, error)
+}
+
+// SignInUseCase defines the interface for user authentication
+type SignInUseCase interface {
+	SignInEmail(ctx context.Context, input *domain.SignInEmailInput) (*domain.SignInEmailOutput, error)
+}
+
+// SessionUseCase defines the interface for session management
+type SessionUseCase interface {
+	GetSession(ctx context.Context, token string) (*domain.Session, *domain.User, error)
+	RefreshSession(ctx context.Context, input *domain.RefreshSessionInput) (*domain.RefreshSessionOutput, error)
+	CleanExpiredSessions(ctx context.Context) error
+	SignOut(ctx context.Context, token string) error
+}
+
+// EmailVerificationUseCase defines the interface for email verification
+type EmailVerificationUseCase interface {
+	SendVerificationEmail(ctx context.Context, email string) error
+	VerifyEmail(ctx context.Context, token string) (*domain.User, error)
+}
+
+// PasswordResetUseCase defines the interface for password reset
+type PasswordResetUseCase interface {
+	RequestPasswordReset(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, newPassword string) error
+}
+
+// PasswordChangeUseCase defines the interface for password change
+type PasswordChangeUseCase interface {
+	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string, revokeOtherSessions bool) error
+}

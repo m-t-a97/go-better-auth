@@ -2,24 +2,19 @@ package usecase
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/m-t-a97/go-better-auth/domain"
 )
 
 // AuthUseCase handles authentication business logic
 type AuthUseCase struct {
-	userRepo         UserRepository
-	sessionRepo      SessionRepository
-	accountRepo      AccountRepository
-	verificationRepo VerificationRepository
-	passwordHasher   PasswordHasher
-	emailSender      EmailSender
-	config           *domain.AuthConfig
+	signUpUseCase            SignUpUseCase
+	signInUseCase            SignInUseCase
+	sessionUseCase           SessionUseCase
+	emailVerificationUseCase EmailVerificationUseCase
+	passwordResetUseCase     PasswordResetUseCase
+	passwordChangeUseCase    PasswordChangeUseCase
 }
 
 // NewAuthUseCase creates a new authentication use case
@@ -39,503 +34,103 @@ func NewAuthUseCase(
 		config.VerificationTokenExpiry = 24 * time.Hour // 24 hours default
 	}
 	return &AuthUseCase{
-		userRepo:         userRepo,
-		sessionRepo:      sessionRepo,
-		accountRepo:      accountRepo,
-		verificationRepo: verificationRepo,
-		passwordHasher:   passwordHasher,
-		emailSender:      emailSender,
-		config:           config,
+		signUpUseCase: NewSignUpUseCase(
+			userRepo,
+			accountRepo,
+			verificationRepo,
+			passwordHasher,
+			emailSender,
+			sessionRepo,
+			config,
+		),
+		signInUseCase: NewSignInUseCase(
+			userRepo,
+			accountRepo,
+			sessionRepo,
+			verificationRepo,
+			passwordHasher,
+			emailSender,
+			config,
+		),
+		sessionUseCase: NewSessionUseCase(
+			sessionRepo,
+			userRepo,
+			config,
+		),
+		emailVerificationUseCase: NewEmailVerificationUseCase(
+			userRepo,
+			verificationRepo,
+			emailSender,
+			config,
+		),
+		passwordResetUseCase: NewPasswordResetUseCase(
+			userRepo,
+			accountRepo,
+			verificationRepo,
+			passwordHasher,
+			emailSender,
+			config,
+		),
+		passwordChangeUseCase: NewPasswordChangeUseCase(
+			userRepo,
+			accountRepo,
+			sessionRepo,
+			passwordHasher,
+		),
 	}
-}
-
-// validatePassword checks password policy compliance
-// Minimum 8 characters required, with at least one uppercase, one lowercase, one digit, and one special character
-func validatePassword(password string) error {
-	if len(password) < 8 {
-		return &domain.AuthError{
-			Code:    "weak_password",
-			Message: "Password must be at least 8 characters long",
-			Status:  400,
-		}
-	}
-
-	hasUpper, hasLower, hasDigit, hasSpecial := false, false, false, false
-	specialChars := "!@#$%^&*()_+-=[]{}|;:,.<>?"
-
-	for _, char := range password {
-		if char >= 'A' && char <= 'Z' {
-			hasUpper = true
-		} else if char >= 'a' && char <= 'z' {
-			hasLower = true
-		} else if char >= '0' && char <= '9' {
-			hasDigit = true
-		} else if len([]rune(specialChars)) > 0 {
-			for _, s := range specialChars {
-				if char == s {
-					hasSpecial = true
-					break
-				}
-			}
-		}
-	}
-
-	if !hasUpper {
-		return &domain.AuthError{
-			Code:    "weak_password",
-			Message: "Password must contain at least one uppercase letter",
-			Status:  400,
-		}
-	}
-	if !hasLower {
-		return &domain.AuthError{
-			Code:    "weak_password",
-			Message: "Password must contain at least one lowercase letter",
-			Status:  400,
-		}
-	}
-	if !hasDigit {
-		return &domain.AuthError{
-			Code:    "weak_password",
-			Message: "Password must contain at least one digit",
-			Status:  400,
-		}
-	}
-	if !hasSpecial {
-		return &domain.AuthError{
-			Code:    "weak_password",
-			Message: "Password must contain at least one special character",
-			Status:  400,
-		}
-	}
-
-	return nil
 }
 
 // SignUpEmail registers a new user with email and password
 func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *domain.SignUpEmailInput) (*domain.SignUpEmailOutput, error) {
-	// Validate password policy
-	if err := validatePassword(input.Password); err != nil {
-		return nil, err
-	}
-
-	// Check if user already exists
-	existingUser, err := uc.userRepo.FindByEmail(ctx, input.Email)
-	if err == nil && existingUser != nil {
-		return nil, domain.ErrUserAlreadyExists
-	}
-
-	// Hash password
-	hashedPassword, err := uc.passwordHasher.Hash(input.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create user
-	user := &domain.User{
-		ID:            uuid.New().String(),
-		Email:         input.Email,
-		Name:          input.Name,
-		Image:         input.Image,
-		EmailVerified: !uc.config.RequireEmailVerification,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
-
-	if err := uc.userRepo.Create(ctx, user); err != nil {
-		return nil, err
-	}
-
-	// Create account with hashed password
-	account := &domain.Account{
-		ID:         uuid.New().String(),
-		UserID:     user.ID,
-		AccountID:  user.Email,
-		ProviderId: "credential",
-		Password:   &hashedPassword,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-
-	if err := uc.accountRepo.Create(ctx, account); err != nil {
-		return nil, err
-	}
-
-	// Send verification email if required
-	if uc.config.RequireEmailVerification && uc.emailSender != nil {
-		token := generateToken()
-		verification := &domain.Verification{
-			ID:         uuid.New().String(),
-			Identifier: user.Email,
-			Value:      token,
-			ExpiresAt:  time.Now().Add(uc.config.VerificationTokenExpiry),
-			CreatedAt:  time.Now(),
-		}
-
-		if err := uc.verificationRepo.Create(ctx, verification); err != nil {
-			return nil, err
-		}
-
-		url := uc.config.BaseURL + "/auth/verify-email?token=" + token
-		if err := uc.emailSender.SendVerificationEmail(ctx, user.Email, token, url); err != nil {
-			// Log error but don't fail signup
-		}
-	}
-
-	var session *domain.Session
-	// Auto sign in if enabled and email verification not required or not enabled
-	if uc.config.AutoSignIn && (!uc.config.RequireEmailVerification || user.EmailVerified) {
-		session, err = uc.createSession(ctx, user.ID, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &domain.SignUpEmailOutput{
-		User:    user,
-		Session: session,
-	}, nil
+	return uc.signUpUseCase.SignUpEmail(ctx, input)
 }
 
 // SignInEmail authenticates a user with email and password
 func (uc *AuthUseCase) SignInEmail(ctx context.Context, input *domain.SignInEmailInput) (*domain.SignInEmailOutput, error) {
-	// Find user
-	user, err := uc.userRepo.FindByEmail(ctx, input.Email)
-	if err != nil {
-		return nil, domain.ErrInvalidCredentials
-	}
-
-	// Check email verification if required
-	if uc.config.RequireEmailVerification && !user.EmailVerified {
-		// Send verification email
-		if uc.emailSender != nil {
-			token := generateToken()
-			verification := &domain.Verification{
-				ID:         uuid.New().String(),
-				Identifier: user.Email,
-				Value:      token,
-				ExpiresAt:  time.Now().Add(uc.config.VerificationTokenExpiry),
-				CreatedAt:  time.Now(),
-			}
-
-			uc.verificationRepo.Create(ctx, verification)
-			url := uc.config.BaseURL + "/auth/verify-email?token=" + token
-			uc.emailSender.SendVerificationEmail(ctx, user.Email, token, url)
-		}
-		return nil, domain.ErrEmailNotVerified
-	}
-
-	// Find account
-	account, err := uc.accountRepo.FindByUserIDAndProvider(ctx, user.ID, "credential")
-	if err != nil || account.Password == nil {
-		return nil, domain.ErrInvalidCredentials
-	}
-
-	// Verify password
-	if !uc.passwordHasher.Verify(input.Password, *account.Password) {
-		return nil, domain.ErrInvalidCredentials
-	}
-
-	// Create session
-	expiresIn := uc.config.SessionExpiresIn
-	if input.RememberMe {
-		expiresIn = 30 * 24 * time.Hour // 30 days
-	}
-
-	session, err := uc.createSessionWithExpiry(ctx, user.ID, expiresIn, input.IPAddress, input.UserAgent)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.SignInEmailOutput{
-		User:    user,
-		Session: session,
-	}, nil
+	return uc.signInUseCase.SignInEmail(ctx, input)
 }
 
 // GetSession retrieves a session by token
 func (uc *AuthUseCase) GetSession(ctx context.Context, token string) (*domain.Session, *domain.User, error) {
-	session, err := uc.sessionRepo.FindByToken(ctx, token)
-	if err != nil {
-		return nil, nil, domain.ErrInvalidToken
-	}
-
-	// Check if session is expired
-	if time.Now().After(session.ExpiresAt) {
-		uc.sessionRepo.Delete(ctx, session.ID)
-		return nil, nil, domain.ErrSessionExpired
-	}
-
-	// Get user
-	user, err := uc.userRepo.FindByID(ctx, session.UserID)
-	if err != nil {
-		return nil, nil, domain.ErrUserNotFound
-	}
-
-	return session, user, nil
+	return uc.sessionUseCase.GetSession(ctx, token)
 }
 
 // RefreshSession extends the expiration time of a session
 func (uc *AuthUseCase) RefreshSession(ctx context.Context, input *domain.RefreshSessionInput) (*domain.RefreshSessionOutput, error) {
-	session, err := uc.sessionRepo.FindByToken(ctx, input.Token)
-	if err != nil {
-		return nil, domain.ErrInvalidToken
-	}
-
-	// Check if session is expired
-	if time.Now().After(session.ExpiresAt) {
-		uc.sessionRepo.Delete(ctx, session.ID)
-		return nil, domain.ErrSessionExpired
-	}
-
-	// Extend session expiration by the configured duration
-	session.ExpiresAt = time.Now().Add(uc.config.SessionExpiresIn)
-	session.UpdatedAt = time.Now()
-
-	if err := uc.sessionRepo.Update(ctx, session); err != nil {
-		return nil, err
-	}
-
-	// Get user
-	user, err := uc.userRepo.FindByID(ctx, session.UserID)
-	if err != nil {
-		return nil, domain.ErrUserNotFound
-	}
-
-	return &domain.RefreshSessionOutput{
-		Session: session,
-		User:    user,
-	}, nil
+	return uc.sessionUseCase.RefreshSession(ctx, input)
 }
 
 // CleanExpiredSessions removes expired sessions from the database
 func (uc *AuthUseCase) CleanExpiredSessions(ctx context.Context) error {
-	return uc.sessionRepo.DeleteExpired(ctx)
+	return uc.sessionUseCase.CleanExpiredSessions(ctx)
 }
 
 // SignOut deletes a session
 func (uc *AuthUseCase) SignOut(ctx context.Context, token string) error {
-	return uc.sessionRepo.DeleteByToken(ctx, token)
+	return uc.sessionUseCase.SignOut(ctx, token)
 }
 
 // SendVerificationEmail sends a verification email to the user
 func (uc *AuthUseCase) SendVerificationEmail(ctx context.Context, email string) error {
-	if uc.emailSender == nil {
-		return domain.ErrInvalidRequest
-	}
-
-	user, err := uc.userRepo.FindByEmail(ctx, email)
-	if err != nil {
-		return domain.ErrUserNotFound
-	}
-
-	if user.EmailVerified {
-		return nil // Already verified
-	}
-
-	token := generateToken()
-	verification := &domain.Verification{
-		ID:         uuid.New().String(),
-		Identifier: email,
-		Value:      token,
-		ExpiresAt:  time.Now().Add(uc.config.VerificationTokenExpiry),
-		CreatedAt:  time.Now(),
-	}
-
-	if err := uc.verificationRepo.Create(ctx, verification); err != nil {
-		return err
-	}
-
-	url := uc.config.BaseURL + "/auth/verify-email?token=" + token
-	return uc.emailSender.SendVerificationEmail(ctx, email, token, url)
+	return uc.emailVerificationUseCase.SendVerificationEmail(ctx, email)
 }
 
 // VerifyEmail verifies a user's email address
 func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) (*domain.User, error) {
-	// Find verification
-	// Note: We need to search by value (token) but identifier is unknown
-	// This is a simplified implementation
-	verification, err := uc.findVerificationByToken(ctx, token)
-	if err != nil {
-		return nil, domain.ErrInvalidToken
-	}
-
-	// Check if expired
-	if time.Now().After(verification.ExpiresAt) {
-		uc.verificationRepo.Delete(ctx, verification.ID)
-		return nil, domain.ErrInvalidToken
-	}
-
-	// Find and update user
-	user, err := uc.userRepo.FindByEmail(ctx, verification.Identifier)
-	if err != nil {
-		return nil, domain.ErrUserNotFound
-	}
-
-	user.EmailVerified = true
-	user.UpdatedAt = time.Now()
-
-	if err := uc.userRepo.Update(ctx, user); err != nil {
-		return nil, err
-	}
-
-	// Delete verification token
-	uc.verificationRepo.Delete(ctx, verification.ID)
-
-	return user, nil
+	return uc.emailVerificationUseCase.VerifyEmail(ctx, token)
 }
 
 // RequestPasswordReset sends a password reset email
 func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) error {
-	if uc.emailSender == nil {
-		return domain.ErrInvalidRequest
-	}
-
-	user, err := uc.userRepo.FindByEmail(ctx, email)
-	if err != nil {
-		// Don't reveal if user exists
-		return nil
-	}
-
-	token := generateToken()
-	verification := &domain.Verification{
-		ID:         uuid.New().String(),
-		Identifier: user.ID,
-		Value:      token,
-		ExpiresAt:  time.Now().Add(uc.config.VerificationTokenExpiry),
-		CreatedAt:  time.Now(),
-	}
-
-	if err := uc.verificationRepo.Create(ctx, verification); err != nil {
-		return err
-	}
-
-	url := uc.config.BaseURL + "/auth/reset-password?token=" + token
-	return uc.emailSender.SendPasswordResetEmail(ctx, email, token, url)
+	return uc.passwordResetUseCase.RequestPasswordReset(ctx, email)
 }
 
 // ResetPassword resets a user's password using a token
 func (uc *AuthUseCase) ResetPassword(ctx context.Context, token, newPassword string) error {
-	// Validate password policy
-	if err := validatePassword(newPassword); err != nil {
-		return err
-	}
-
-	// Find verification
-	verification, err := uc.findVerificationByToken(ctx, token)
-	if err != nil {
-		return domain.ErrInvalidToken
-	}
-
-	// Check if expired
-	if time.Now().After(verification.ExpiresAt) {
-		uc.verificationRepo.Delete(ctx, verification.ID)
-		return domain.ErrInvalidToken
-	}
-
-	// Hash new password
-	hashedPassword, err := uc.passwordHasher.Hash(newPassword)
-	if err != nil {
-		return err
-	}
-
-	// Update account
-	account, err := uc.accountRepo.FindByUserIDAndProvider(ctx, verification.Identifier, "credential")
-	if err != nil {
-		return domain.ErrUserNotFound
-	}
-
-	account.Password = &hashedPassword
-	account.UpdatedAt = time.Now()
-
-	if err := uc.accountRepo.Update(ctx, account); err != nil {
-		return err
-	}
-
-	// Delete verification token
-	uc.verificationRepo.Delete(ctx, verification.ID)
-
-	return nil
+	return uc.passwordResetUseCase.ResetPassword(ctx, token, newPassword)
 }
 
 // ChangePassword changes a user's password
 func (uc *AuthUseCase) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string, revokeOtherSessions bool) error {
-	// Validate password policy
-	if err := validatePassword(newPassword); err != nil {
-		return err
-	}
-
-	// Verify current password
-	account, err := uc.accountRepo.FindByUserIDAndProvider(ctx, userID, "credential")
-	if err != nil || account.Password == nil {
-		return domain.ErrInvalidCredentials
-	}
-
-	if !uc.passwordHasher.Verify(currentPassword, *account.Password) {
-		return domain.ErrInvalidCredentials
-	}
-
-	// Hash new password
-	hashedPassword, err := uc.passwordHasher.Hash(newPassword)
-	if err != nil {
-		return err
-	}
-
-	// Update account
-	account.Password = &hashedPassword
-	account.UpdatedAt = time.Now()
-
-	if err := uc.accountRepo.Update(ctx, account); err != nil {
-		return err
-	}
-
-	// Revoke other sessions if requested
-	if revokeOtherSessions {
-		sessions, err := uc.sessionRepo.FindByUserID(ctx, userID)
-		if err == nil {
-			for _, session := range sessions {
-				uc.sessionRepo.Delete(ctx, session.ID)
-			}
-		}
-	}
-
-	return nil
-}
-
-// Helper functions
-
-func (uc *AuthUseCase) createSession(ctx context.Context, userID string, ipAddress, userAgent *string) (*domain.Session, error) {
-	return uc.createSessionWithExpiry(ctx, userID, uc.config.SessionExpiresIn, ipAddress, userAgent)
-}
-
-func (uc *AuthUseCase) createSessionWithExpiry(ctx context.Context, userID string, expiresIn time.Duration, ipAddress, userAgent *string) (*domain.Session, error) {
-	session := &domain.Session{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Token:     generateToken(),
-		ExpiresAt: time.Now().Add(expiresIn),
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	if err := uc.sessionRepo.Create(ctx, session); err != nil {
-		return nil, err
-	}
-
-	return session, nil
-}
-
-func (uc *AuthUseCase) findVerificationByToken(ctx context.Context, token string) (*domain.Verification, error) {
-	// This is a simplified implementation
-	// In a real implementation, you would need to query by value field
-	// For now, we'll assume the repository can handle this
-	return uc.verificationRepo.FindByIdentifierAndValue(ctx, "", token)
-}
-
-func generateToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	return uc.passwordChangeUseCase.ChangePassword(ctx, userID, currentPassword, newPassword, revokeOtherSessions)
 }

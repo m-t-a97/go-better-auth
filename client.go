@@ -232,7 +232,7 @@ func New(config *Config) (*GoBetterAuth, error) {
 	// Initialize password hasher
 	passwordHasher := config.Advanced.PasswordHasher
 	if passwordHasher == nil {
-		passwordHasher = usecase.NewScryptPasswordHasher()
+		passwordHasher = usecase.NewArgon2PasswordHasher()
 	}
 
 	// Create email sender wrapper

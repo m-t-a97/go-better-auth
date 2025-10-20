@@ -93,7 +93,7 @@ func TestNew_UnsupportedDatabaseProvider(t *testing.T) {
 
 // TestNew_CustomPasswordHasher tests that custom password hasher is used
 func TestNew_CustomPasswordHasher(t *testing.T) {
-	customHasher := usecase.NewScryptPasswordHasher()
+	customHasher := usecase.NewArgon2PasswordHasher()
 
 	config := &Config{
 		Database: DatabaseConfig{

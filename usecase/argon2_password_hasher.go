@@ -4,33 +4,30 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/argon2"
 )
 
-// ScryptPasswordHasher implements password hashing using scrypt
-type ScryptPasswordHasher struct{}
+// Argon2PasswordHasher implements password hashing using argon2
+type Argon2PasswordHasher struct{}
 
-func NewScryptPasswordHasher() *ScryptPasswordHasher {
-	return &ScryptPasswordHasher{}
+func NewArgon2PasswordHasher() *Argon2PasswordHasher {
+	return &Argon2PasswordHasher{}
 }
 
-func (h *ScryptPasswordHasher) Hash(password string) (string, error) {
+func (h *Argon2PasswordHasher) Hash(password string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	hash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
+	hash := argon2.Key([]byte(password), salt, 1, 64*1024, 4, 32)
 
 	// Combine salt and hash
 	combined := append(salt, hash...)
 	return base64.StdEncoding.EncodeToString(combined), nil
 }
 
-func (h *ScryptPasswordHasher) Verify(password, encoded string) bool {
+func (h *Argon2PasswordHasher) Verify(password, encoded string) bool {
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return false
@@ -43,10 +40,7 @@ func (h *ScryptPasswordHasher) Verify(password, encoded string) bool {
 	salt := decoded[:16]
 	hash := decoded[16:]
 
-	newHash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
-	if err != nil {
-		return false
-	}
+	newHash := argon2.Key([]byte(password), salt, 1, 64*1024, 4, 32)
 
 	// Constant time comparison
 	if len(newHash) != len(hash) {
@@ -54,7 +48,7 @@ func (h *ScryptPasswordHasher) Verify(password, encoded string) bool {
 	}
 
 	var v byte
-	for i := 0; i < len(hash); i++ {
+	for i := range hash {
 		v |= hash[i] ^ newHash[i]
 	}
 

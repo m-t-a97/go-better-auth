@@ -84,7 +84,7 @@ func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, re
 	session := &domain.Session{
 		ID:        uuid.New().String(),
 		UserID:    user.ID,
-		Token:     generateToken(),
+		Token:     GenerateToken(),
 		ExpiresAt: time.Now().Add(uc.config.SessionExpiresIn),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),

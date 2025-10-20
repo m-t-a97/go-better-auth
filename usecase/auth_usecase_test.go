@@ -237,7 +237,7 @@ func TestSignUpEmail(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -299,7 +299,7 @@ func TestSignInEmail(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -374,7 +374,7 @@ func TestSignInEmail(t *testing.T) {
 }
 
 func TestPasswordHashing(t *testing.T) {
-	hasher := usecase.NewScryptPasswordHasher()
+	hasher := usecase.NewArgon2PasswordHasher()
 
 	password := "mysecretpassword"
 
@@ -401,7 +401,7 @@ func TestSessionManagement(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -460,7 +460,7 @@ func TestRefreshSession(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -540,7 +540,7 @@ func TestRefreshExpiredSession(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -595,7 +595,7 @@ func TestCleanExpiredSessions(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -674,7 +674,7 @@ func TestPasswordPolicyValidation(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -770,7 +770,7 @@ func TestSignUpEmailDuplicateEmail(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
@@ -818,7 +818,7 @@ func TestChangePasswordWithValidation(t *testing.T) {
 	sessionRepo := NewMockSessionRepository()
 	accountRepo := NewMockAccountRepository()
 	verificationRepo := NewMockVerificationRepository()
-	passwordHasher := usecase.NewScryptPasswordHasher()
+	passwordHasher := usecase.NewArgon2PasswordHasher()
 
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,

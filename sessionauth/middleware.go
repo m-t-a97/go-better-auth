@@ -2,67 +2,78 @@ package sessionauth
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/m-t-a97/go-better-auth/domain"
 )
 
-// Middleware provides session-based authentication middleware
+// Middleware handles session authentication for HTTP requests
 type Middleware struct {
-	sessionRepo domain.SessionRepository
-	userRepo    domain.UserRepository
-	cookieName  string
+	manager  *Manager
+	optional bool // If true, doesn't block requests without valid sessions
 }
 
 // NewMiddleware creates a new session authentication middleware
-func NewMiddleware(
-	sessionRepo domain.SessionRepository,
-	userRepo domain.UserRepository,
-) *Middleware {
+// By default, it requires valid sessions (optional=false)
+func NewMiddleware(manager *Manager) *Middleware {
 	return &Middleware{
-		sessionRepo: sessionRepo,
-		userRepo:    userRepo,
-		cookieName:  "go-better-auth.session",
+		manager:  manager,
+		optional: false,
 	}
 }
 
-// WithCookieName sets a custom cookie name for session tokens
-func (m *Middleware) WithCookieName(name string) *Middleware {
-	m.cookieName = name
-	return m
+// NewOptionalMiddleware creates a session middleware that doesn't require authentication
+// but will populate context with session/user if valid credentials are present
+func NewOptionalMiddleware(manager *Manager) *Middleware {
+	return &Middleware{
+		manager:  manager,
+		optional: true,
+	}
 }
 
 // Handler wraps an http.Handler with session authentication
-// It extracts the session token from cookie or Authorization header,
-// validates it, and attaches the authenticated user to the request context
 func (m *Middleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		// Try to extract session token
-		token, err := m.extractToken(r)
-		if err != nil || token == "" {
-			// No valid token found - allow the request to continue
-			// Handlers can check if user is authenticated using GetUser(r.Context())
-			next.ServeHTTP(w, r)
+		// Get session token from cookie
+		token, err := m.manager.GetSessionCookie(r)
+		if err != nil {
+			if m.optional {
+				// For optional auth, continue without session
+				next.ServeHTTP(w, r)
+				return
+			}
+			respondUnauthorized(w, "No session found")
 			return
 		}
 
 		// Validate session and get user
-		session, user, err := m.validateSession(ctx, token)
-		if err != nil || session == nil || user == nil {
-			// Session is invalid or expired - allow the request to continue
-			// Handlers can check if user is authenticated using GetUser(r.Context())
-			next.ServeHTTP(w, r)
+		session, user, err := m.manager.ValidateSession(r.Context(), token)
+		if err != nil {
+			if m.optional {
+				// For optional auth, continue without session
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Clear invalid session cookie
+			m.manager.ClearSessionCookie(w)
+
+			// Return appropriate error
+			if err == domain.ErrSessionExpired {
+				respondUnauthorized(w, "Session expired")
+			} else {
+				respondUnauthorized(w, "Invalid session")
+			}
 			return
 		}
 
-		// Attach user and session to context
-		ctx = context.WithValue(ctx, userContextKey, user)
-		ctx = context.WithValue(ctx, sessionContextKey, session)
+		// Add session and user to context
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, SessionContextKey, session)
+		ctx = context.WithValue(ctx, UserContextKey, user)
 
-		// Continue with authenticated context
+		// Continue with enriched context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -74,109 +85,58 @@ func (m *Middleware) HandlerFunc(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Require returns a middleware that requires authentication
-// If no valid session is found, it responds with 401 Unauthorized
-func (m *Middleware) Require(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+// Helper functions for extracting session and user from context
 
-		// Check if user is already authenticated by the Handler middleware
-		user := GetUser(ctx)
-		if user != nil {
-			// User is authenticated, continue
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Try to extract session token
-		token, err := m.extractToken(r)
-		if err != nil || token == "" {
-			respondUnauthorized(w)
-			return
-		}
-
-		// Validate session and get user
-		session, user, err := m.validateSession(ctx, token)
-		if err != nil || session == nil || user == nil {
-			respondUnauthorized(w)
-			return
-		}
-
-		// Attach user and session to context
-		ctx = context.WithValue(ctx, userContextKey, user)
-		ctx = context.WithValue(ctx, sessionContextKey, session)
-
-		// Continue with authenticated context
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+// GetSession retrieves the session from the request context
+// Returns nil if no session is present
+func GetSession(r *http.Request) *domain.Session {
+	session, ok := r.Context().Value(SessionContextKey).(*domain.Session)
+	if !ok {
+		return nil
+	}
+	return session
 }
 
-// RequireFunc wraps an http.HandlerFunc requiring authentication
-func (m *Middleware) RequireFunc(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m.Require(http.HandlerFunc(next)).ServeHTTP(w, r)
+// GetUser retrieves the user from the request context
+// Returns nil if no user is present
+func GetUser(r *http.Request) *domain.User {
+	user, ok := r.Context().Value(UserContextKey).(*domain.User)
+	if !ok {
+		return nil
 	}
+	return user
 }
 
-// extractToken extracts the session token from the request
-// It checks (in order):
-// 1. Authorization header with Bearer scheme
-// 2. Cookie with configured cookie name
-func (m *Middleware) extractToken(r *http.Request) (string, error) {
-	// Check Authorization header first (Bearer token)
-	authHeader := r.Header.Get("Authorization")
-	if authHeader != "" {
-		const bearerPrefix = "Bearer "
-		if strings.HasPrefix(authHeader, bearerPrefix) {
-			token := strings.TrimPrefix(authHeader, bearerPrefix)
-			return strings.TrimSpace(token), nil
-		}
-	}
-
-	// Check session cookie
-	cookie, err := r.Cookie(m.cookieName)
-	if err == nil && cookie.Value != "" {
-		return cookie.Value, nil
-	}
-
-	return "", nil
-}
-
-// validateSession validates the session token and retrieves the associated user
-func (m *Middleware) validateSession(ctx context.Context, token string) (*domain.Session, *domain.User, error) {
-	// Find session by token
-	session, err := m.sessionRepo.FindByToken(ctx, token)
-	if err != nil {
-		return nil, nil, err
-	}
-
+// MustGetSession retrieves the session from context or panics
+// Use this only in handlers protected by required authentication middleware
+func MustGetSession(r *http.Request) *domain.Session {
+	session := GetSession(r)
 	if session == nil {
-		return nil, nil, domain.ErrSessionNotFound
+		panic("session not found in context - ensure authentication middleware is applied")
 	}
-
-	// Check if session is expired
-	if session.ExpiresAt.Before(getCurrentTime()) {
-		// Optionally delete expired session
-		_ = m.sessionRepo.DeleteByToken(ctx, token)
-		return nil, nil, domain.ErrSessionExpired
-	}
-
-	// Get the user associated with the session
-	user, err := m.userRepo.FindByID(ctx, session.UserID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if user == nil {
-		return nil, nil, domain.ErrUserNotFound
-	}
-
-	return session, user, nil
+	return session
 }
 
-// respondUnauthorized responds with a 401 Unauthorized error
-func respondUnauthorized(w http.ResponseWriter) {
+// MustGetUser retrieves the user from context or panics
+// Use this only in handlers protected by required authentication middleware
+func MustGetUser(r *http.Request) *domain.User {
+	user := GetUser(r)
+	if user == nil {
+		panic("user not found in context - ensure authentication middleware is applied")
+	}
+	return user
+}
+
+// respondUnauthorized sends a 401 Unauthorized response
+func respondUnauthorized(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte(`{"error":"unauthorized","message":"Authentication required"}`))
+
+	response := map[string]interface{}{
+		"error": map[string]string{
+			"code":    "unauthorized",
+			"message": message,
+		},
+	}
+	json.NewEncoder(w).Encode(response)
 }

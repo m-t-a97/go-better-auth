@@ -10,586 +10,361 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain"
 )
 
-// mockSessionRepository is a mock implementation of SessionRepository
-type mockSessionRepository struct {
+// Mock repositories for testing
+type mockSessionRepo struct {
 	sessions map[string]*domain.Session
 }
 
-func (m *mockSessionRepository) Create(ctx context.Context, session *domain.Session) error {
+func (m *mockSessionRepo) Create(ctx context.Context, session *domain.Session) error {
 	m.sessions[session.Token] = session
 	return nil
 }
 
-func (m *mockSessionRepository) FindByToken(ctx context.Context, token string) (*domain.Session, error) {
-	return m.sessions[token], nil
+func (m *mockSessionRepo) FindByToken(ctx context.Context, token string) (*domain.Session, error) {
+	session, ok := m.sessions[token]
+	if !ok {
+		return nil, domain.ErrSessionNotFound
+	}
+	return session, nil
 }
 
-func (m *mockSessionRepository) FindByUserID(ctx context.Context, userID string) ([]*domain.Session, error) {
-	var sessions []*domain.Session
-	for _, s := range m.sessions {
-		if s.UserID == userID {
-			sessions = append(sessions, s)
+func (m *mockSessionRepo) FindByUserID(ctx context.Context, userID string) ([]*domain.Session, error) {
+	return nil, nil
+}
+
+func (m *mockSessionRepo) Update(ctx context.Context, session *domain.Session) error {
+	m.sessions[session.Token] = session
+	return nil
+}
+
+func (m *mockSessionRepo) Delete(ctx context.Context, id string) error {
+	for token, session := range m.sessions {
+		if session.ID == id {
+			delete(m.sessions, token)
+			return nil
 		}
 	}
-	return sessions, nil
+	return domain.ErrSessionNotFound
 }
 
-func (m *mockSessionRepository) Update(ctx context.Context, session *domain.Session) error {
-	m.sessions[session.Token] = session
-	return nil
-}
-
-func (m *mockSessionRepository) Delete(ctx context.Context, id string) error {
-	return nil
-}
-
-func (m *mockSessionRepository) DeleteByToken(ctx context.Context, token string) error {
+func (m *mockSessionRepo) DeleteByToken(ctx context.Context, token string) error {
 	delete(m.sessions, token)
 	return nil
 }
 
-func (m *mockSessionRepository) DeleteExpired(ctx context.Context) error {
+func (m *mockSessionRepo) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-// mockUserRepository is a mock implementation of UserRepository
-type mockUserRepository struct {
+type mockUserRepo struct {
 	users map[string]*domain.User
 }
 
-func (m *mockUserRepository) Create(ctx context.Context, user *domain.User) error {
+func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	m.users[user.ID] = user
 	return nil
 }
 
-func (m *mockUserRepository) FindByID(ctx context.Context, id string) (*domain.User, error) {
-	return m.users[id], nil
+func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
+	user, ok := m.users[id]
+	if !ok {
+		return nil, domain.ErrUserNotFound
+	}
+	return user, nil
 }
 
-func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	for _, u := range m.users {
-		if u.Email == email {
-			return u, nil
+func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	for _, user := range m.users {
+		if user.Email == email {
+			return user, nil
 		}
 	}
-	return nil, nil
+	return nil, domain.ErrUserNotFound
 }
 
-func (m *mockUserRepository) Update(ctx context.Context, user *domain.User) error {
+func (m *mockUserRepo) Update(ctx context.Context, user *domain.User) error {
 	m.users[user.ID] = user
 	return nil
 }
 
-func (m *mockUserRepository) Delete(ctx context.Context, id string) error {
+func (m *mockUserRepo) Delete(ctx context.Context, id string) error {
 	delete(m.users, id)
 	return nil
 }
 
-func newMockRepositories() (*mockSessionRepository, *mockUserRepository) {
-	return &mockSessionRepository{sessions: make(map[string]*domain.Session)},
-		&mockUserRepository{users: make(map[string]*domain.User)}
-}
+func TestMiddleware_ValidSession(t *testing.T) {
+	// Setup
+	sessionRepo := &mockSessionRepo{sessions: make(map[string]*domain.Session)}
+	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
 
-func TestMiddlewareHandlerWithCookie(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Create test user
 	user := &domain.User{
 		ID:    "user123",
-		Name:  "Test User",
 		Email: "test@example.com",
+		Name:  "Test User",
 	}
-	userRepo.users["user123"] = user
+	userRepo.Create(context.Background(), user)
 
-	// Create test session
-	futureTime := time.Now().Add(24 * time.Hour)
 	session := &domain.Session{
 		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
+		UserID:    user.ID,
+		Token:     "valid-token",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	sessionRepo.sessions["token123"] = session
+	sessionRepo.Create(context.Background(), session)
 
-	// Test handler
+	manager := NewManager(sessionRepo, userRepo, nil)
+	middleware := NewMiddleware(manager)
+
+	// Create test handler
 	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+		// Verify session and user are in context
+		contextSession := GetSession(r)
+		contextUser := GetUser(r)
+
+		if contextSession == nil {
+			t.Error("Expected session in context")
 		}
-		w.Header().Set("X-User-ID", authenticatedUser.ID)
+		if contextUser == nil {
+			t.Error("Expected user in context")
+		}
+		if contextSession.Token != "valid-token" {
+			t.Errorf("Expected token 'valid-token', got '%s'", contextSession.Token)
+		}
+		if contextUser.Email != "test@example.com" {
+			t.Errorf("Expected email 'test@example.com', got '%s'", contextUser.Email)
+		}
+
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	}))
 
 	// Create request with session cookie
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	req.AddCookie(&http.Cookie{
-		Name:  "go-better-auth.session",
-		Value: "token123",
+		Name:  SessionCookieName,
+		Value: "valid-token",
 	})
 
+	// Test
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
+	// Assert
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
-	}
-
-	if w.Header().Get("X-User-ID") != "user123" {
-		t.Errorf("Expected user ID user123, got %s", w.Header().Get("X-User-ID"))
+		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 }
 
-func TestMiddlewareHandlerWithBearerToken(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
+func TestMiddleware_ExpiredSession(t *testing.T) {
+	// Setup
+	sessionRepo := &mockSessionRepo{sessions: make(map[string]*domain.Session)}
+	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
 
-	// Create test user
 	user := &domain.User{
 		ID:    "user123",
-		Name:  "Test User",
 		Email: "test@example.com",
+		Name:  "Test User",
 	}
-	userRepo.users["user123"] = user
+	userRepo.Create(context.Background(), user)
 
-	// Create test session
-	futureTime := time.Now().Add(24 * time.Hour)
 	session := &domain.Session{
 		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
+		UserID:    user.ID,
+		Token:     "expired-token",
+		ExpiresAt: time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	sessionRepo.sessions["token123"] = session
+	sessionRepo.Create(context.Background(), session)
 
-	// Test handler
+	manager := NewManager(sessionRepo, nil, nil)
+	middleware := NewMiddleware(manager)
+
 	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.Header().Set("X-User-ID", authenticatedUser.ID)
+		t.Error("Handler should not be called for expired session")
 		w.WriteHeader(http.StatusOK)
-	}))
-
-	// Create request with Bearer token
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Authorization", "Bearer token123")
-
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
-	}
-
-	if w.Header().Get("X-User-ID") != "user123" {
-		t.Errorf("Expected user ID user123, got %s", w.Header().Get("X-User-ID"))
-	}
-}
-
-func TestMiddlewareHandlerNoToken(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Test handler
-	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusOK) // Continue without user
-			return
-		}
-		w.WriteHeader(http.StatusConflict)
-	}))
-
-	// Create request without token
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200 (continue without user), got %d", w.Code)
-	}
-}
-
-func TestMiddlewareHandlerExpiredSession(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Create test user
-	user := &domain.User{
-		ID:    "user123",
-		Name:  "Test User",
-		Email: "test@example.com",
-	}
-	userRepo.users["user123"] = user
-
-	// Create expired session
-	pastTime := time.Now().Add(-24 * time.Hour)
-	session := &domain.Session{
-		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: pastTime,
-	}
-	sessionRepo.sessions["token123"] = session
-
-	// Test handler
-	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusOK) // Continue without user
-			return
-		}
-		w.WriteHeader(http.StatusConflict)
 	}))
 
 	// Create request with expired session cookie
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	req.AddCookie(&http.Cookie{
-		Name:  "go-better-auth.session",
-		Value: "token123",
+		Name:  SessionCookieName,
+		Value: "expired-token",
 	})
 
+	// Test
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200 (expired session treated as no auth), got %d", w.Code)
+	// Assert
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status 401, got %d", w.Code)
 	}
 }
 
-func TestMiddlewareRequireWithValidSession(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
+func TestMiddleware_NoSession(t *testing.T) {
+	// Setup
+	sessionRepo := &mockSessionRepo{sessions: make(map[string]*domain.Session)}
+	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
 
-	// Create test user
+	manager := NewManager(sessionRepo, userRepo, nil)
+	middleware := NewMiddleware(manager)
+
+	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("Handler should not be called without session")
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Create request without session cookie
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+
+	// Test
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	// Assert
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status 401, got %d", w.Code)
+	}
+}
+
+func TestOptionalMiddleware_WithSession(t *testing.T) {
+	// Setup
+	sessionRepo := &mockSessionRepo{sessions: make(map[string]*domain.Session)}
+	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
+
 	user := &domain.User{
 		ID:    "user123",
-		Name:  "Test User",
 		Email: "test@example.com",
+		Name:  "Test User",
 	}
-	userRepo.users["user123"] = user
+	userRepo.Create(context.Background(), user)
 
-	// Create test session
-	futureTime := time.Now().Add(24 * time.Hour)
 	session := &domain.Session{
 		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
+		UserID:    user.ID,
+		Token:     "valid-token",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	sessionRepo.sessions["token123"] = session
+	sessionRepo.Create(context.Background(), session)
 
-	// Test handler
-	handler := middleware.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+	manager := NewManager(sessionRepo, userRepo, nil)
+	middleware := NewOptionalMiddleware(manager)
+
+	// Create test handler
+	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Session should be in context
+		contextUser := GetUser(r)
+		if contextUser == nil {
+			t.Error("Expected user in context for optional middleware with valid session")
 		}
-		w.Header().Set("X-User-ID", authenticatedUser.ID)
+
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	}))
 
 	// Create request with session cookie
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{
-		Name:  "go-better-auth.session",
-		Value: "token123",
+		Name:  SessionCookieName,
+		Value: "valid-token",
 	})
 
+	// Test
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
+	// Assert
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
+		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 }
 
-func TestMiddlewareRequireWithoutToken(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
+func TestOptionalMiddleware_WithoutSession(t *testing.T) {
+	// Setup
+	sessionRepo := &mockSessionRepo{sessions: make(map[string]*domain.Session)}
+	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
 
-	// Test handler
-	handler := middleware.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
+	manager := NewManager(sessionRepo, userRepo, nil)
+	middleware := NewOptionalMiddleware(manager)
 
-	// Create request without token
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected 401, got %d", w.Code)
-	}
-}
-
-func TestMiddlewareRequireWithInvalidToken(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Test handler
-	handler := middleware.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	// Create request with invalid token
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Authorization", "Bearer invalid-token")
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected 401, got %d", w.Code)
-	}
-}
-
-func TestGetUserFromContext(t *testing.T) {
-	user := &domain.User{
-		ID:    "user123",
-		Name:  "Test User",
-		Email: "test@example.com",
-	}
-
-	ctx := context.WithValue(context.Background(), userContextKey, user)
-	retrievedUser := GetUser(ctx)
-
-	if retrievedUser == nil {
-		t.Fatal("Expected user, got nil")
-	}
-
-	if retrievedUser.ID != user.ID {
-		t.Errorf("Expected ID %s, got %s", user.ID, retrievedUser.ID)
-	}
-}
-
-func TestGetUserFromContextNil(t *testing.T) {
-	ctx := context.Background()
-	user := GetUser(ctx)
-
-	if user != nil {
-		t.Errorf("Expected nil, got %v", user)
-	}
-}
-
-func TestIsAuthenticated(t *testing.T) {
-	user := &domain.User{ID: "user123"}
-	ctx := context.WithValue(context.Background(), userContextKey, user)
-
-	if !IsAuthenticated(ctx) {
-		t.Error("Expected IsAuthenticated to return true")
-	}
-}
-
-func TestIsAuthenticatedFalse(t *testing.T) {
-	ctx := context.Background()
-
-	if IsAuthenticated(ctx) {
-		t.Error("Expected IsAuthenticated to return false")
-	}
-}
-
-func TestGetUserID(t *testing.T) {
-	user := &domain.User{ID: "user123"}
-	ctx := context.WithValue(context.Background(), userContextKey, user)
-
-	userID := GetUserID(ctx)
-
-	if userID != "user123" {
-		t.Errorf("Expected user123, got %s", userID)
-	}
-}
-
-func TestGetUserIDEmpty(t *testing.T) {
-	ctx := context.Background()
-
-	userID := GetUserID(ctx)
-
-	if userID != "" {
-		t.Errorf("Expected empty string, got %s", userID)
-	}
-}
-
-func TestCustomCookieName(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo).WithCookieName("custom-session")
-
-	// Create test user
-	user := &domain.User{
-		ID:    "user123",
-		Name:  "Test User",
-		Email: "test@example.com",
-	}
-	userRepo.users["user123"] = user
-
-	// Create test session
-	futureTime := time.Now().Add(24 * time.Hour)
-	session := &domain.Session{
-		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
-	}
-	sessionRepo.sessions["token123"] = session
-
-	// Test handler
+	// Create test handler
 	handler := middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authenticatedUser := GetUser(r.Context())
-		if authenticatedUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+		// Session should NOT be in context
+		contextUser := GetUser(r)
+		if contextUser != nil {
+			t.Error("Expected no user in context for optional middleware without session")
 		}
-		w.Header().Set("X-User-ID", authenticatedUser.ID)
+
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	}))
 
-	// Create request with custom cookie name
-	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{
-		Name:  "custom-session",
-		Value: "token123",
-	})
+	// Create request without session cookie
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
+	// Test
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
+	// Assert - should succeed even without session
 	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
+		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 }
 
-func TestGetSession(t *testing.T) {
-	session := &domain.Session{
-		ID:     "session123",
-		UserID: "user123",
-		Token:  "token123",
-	}
+func TestManager_SetAndGetSessionCookie(t *testing.T) {
+	manager := NewManager(nil, nil, nil)
 
-	ctx := context.WithValue(context.Background(), sessionContextKey, session)
-	retrievedSession := GetSession(ctx)
-
-	if retrievedSession == nil {
-		t.Fatal("Expected session, got nil")
-	}
-
-	if retrievedSession.ID != session.ID {
-		t.Errorf("Expected ID %s, got %s", session.ID, retrievedSession.ID)
-	}
-}
-
-func TestHandlerFunc(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Create test user and session
-	user := &domain.User{ID: "user123"}
-	userRepo.users["user123"] = user
-
-	futureTime := time.Now().Add(24 * time.Hour)
-	session := &domain.Session{
-		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
-	}
-	sessionRepo.sessions["token123"] = session
-
-	// Test handler func
-	var called bool
-	handlerFunc := middleware.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		if GetUser(r.Context()) == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{
-		Name:  "go-better-auth.session",
-		Value: "token123",
-	})
-
+	// Create response recorder
 	w := httptest.NewRecorder()
-	handlerFunc(w, req)
 
-	if !called {
-		t.Error("Handler function was not called")
+	// Set session cookie
+	expiresAt := time.Now().Add(24 * time.Hour)
+	manager.SetSessionCookie(w, "test-token", expiresAt)
+
+	// Get cookies from response
+	cookies := w.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("Expected 1 cookie, got %d", len(cookies))
 	}
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
+	cookie := cookies[0]
+	if cookie.Name != SessionCookieName {
+		t.Errorf("Expected cookie name '%s', got '%s'", SessionCookieName, cookie.Name)
 	}
-}
-
-func TestRequireFunc(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
-
-	// Create test user and session
-	user := &domain.User{ID: "user123"}
-	userRepo.users["user123"] = user
-
-	futureTime := time.Now().Add(24 * time.Hour)
-	session := &domain.Session{
-		ID:        "session123",
-		UserID:    "user123",
-		Token:     "token123",
-		ExpiresAt: futureTime,
+	if cookie.Value != "test-token" {
+		t.Errorf("Expected cookie value 'test-token', got '%s'", cookie.Value)
 	}
-	sessionRepo.sessions["token123"] = session
-
-	// Test require func
-	var called bool
-	handlerFunc := middleware.RequireFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{
-		Name:  "go-better-auth.session",
-		Value: "token123",
-	})
-
-	w := httptest.NewRecorder()
-	handlerFunc(w, req)
-
-	if !called {
-		t.Error("Handler function was not called")
-	}
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
+	if !cookie.HttpOnly {
+		t.Error("Expected HttpOnly flag to be true")
 	}
 }
 
-func TestRequireFuncWithoutAuth(t *testing.T) {
-	sessionRepo, userRepo := newMockRepositories()
-	middleware := NewMiddleware(sessionRepo, userRepo)
+func TestManager_ClearSessionCookie(t *testing.T) {
+	manager := NewManager(nil, nil, nil)
 
-	// Test require func without auth
-	var called bool
-	handlerFunc := middleware.RequireFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusOK)
-	})
-
-	req := httptest.NewRequest("GET", "/", nil)
+	// Create response recorder
 	w := httptest.NewRecorder()
-	handlerFunc(w, req)
 
-	if called {
-		t.Error("Handler function should not have been called")
+	// Clear session cookie
+	manager.ClearSessionCookie(w)
+
+	// Get cookies from response
+	cookies := w.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("Expected 1 cookie, got %d", len(cookies))
 	}
 
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected 401, got %d", w.Code)
+	cookie := cookies[0]
+	if cookie.MaxAge != -1 {
+		t.Errorf("Expected MaxAge -1, got %d", cookie.MaxAge)
+	}
+	if cookie.Value != "" {
+		t.Errorf("Expected empty value, got '%s'", cookie.Value)
 	}
 }

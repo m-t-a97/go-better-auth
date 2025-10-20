@@ -1,14 +1,16 @@
-# Session Auth Middleware
+# Session Authentication Middleware
 
-A framework-agnostic session authentication middleware for protecting routes in your Go application. This middleware validates session tokens from cookies or Authorization headers and attaches authenticated user information to the request context.
+Framework-agnostic session authentication middleware for Go Better Auth. This middleware validates session tokens from cookies and populates the request context with authenticated user information.
 
 ## Features
 
-- 🔒 **Framework Agnostic** - Works with any framework that supports `http.Handler` (Chi, Echo, Gin, standard library, etc.)
-- 🍪 **Cookie & Bearer Token Support** - Automatically extracts sessions from cookies or `Authorization: Bearer` headers
-- 📋 **Context Injection** - Attaches user and session data to request context for easy access
-- 🛡️ **Flexible Authentication** - Optional authentication middleware (continues request) and required authentication middleware (returns 401)
-- 🧪 **Testable** - Clean interfaces and context helpers for easy testing
+- ✅ Framework-agnostic (works with Chi, Echo, Gin, standard `net/http`, etc.)
+- ✅ Cookie-based session management
+- ✅ Automatic session validation and expiration checking
+- ✅ Context-based user/session storage
+- ✅ Optional authentication mode for public endpoints
+- ✅ Secure cookie settings (HttpOnly, Secure, SameSite)
+- ✅ Simple and composable API
 
 ## Installation
 
@@ -18,400 +20,333 @@ go get github.com/m-t-a97/go-better-auth
 
 ## Quick Start
 
-### Basic Usage - Optional Authentication
+### Basic Usage
 
 ```go
 package main
 
 import (
     "net/http"
-    "github.com/go-chi/chi/v5"
     "github.com/m-t-a97/go-better-auth/sessionauth"
+    "github.com/m-t-a97/go-better-auth/domain"
 )
 
 func main() {
-    router := chi.NewRouter()
-    
-    // Create session auth middleware
-    authMiddleware := sessionauth.NewMiddleware(sessionRepo, userRepo)
-    
-    // Optionally wrap all routes (user info will be attached if authenticated)
-    router.Use(authMiddleware.Handler)
-    
-    // Handler can check if user is authenticated
-    router.Get("/api/profile", func(w http.ResponseWriter, r *http.Request) {
-        user := sessionauth.GetUser(r.Context())
-        if user == nil {
-            http.Error(w, "Not authenticated", http.StatusUnauthorized)
-            return
-        }
-        
-        w.Header().Set("Content-Type", "application/json")
-        w.Write([]byte(`{"user":"` + user.Email + `"}`))
+    // Initialize repositories (using your adapter of choice)
+    var sessionRepo domain.SessionRepository
+    var userRepo domain.UserRepository
+
+    // Create session manager
+    manager := sessionauth.NewManager(sessionRepo, userRepo, &sessionauth.ManagerConfig{
+        Secure: true, // Set to true in production with HTTPS
     })
-    
-    http.ListenAndServe(":3000", router)
+
+    // Create middleware
+    authMiddleware := sessionauth.NewMiddleware(manager)
+
+    // Protect routes
+    http.Handle("/protected", authMiddleware.Handler(http.HandlerFunc(protectedHandler)))
+    http.ListenAndServe(":8080", nil)
+}
+
+func protectedHandler(w http.ResponseWriter, r *http.Request) {
+    // Get authenticated user from context
+    user := sessionauth.GetUser(r)
+    session := sessionauth.GetSession(r)
+
+    // User is guaranteed to be authenticated here
+    w.Write([]byte("Hello, " + user.Name))
 }
 ```
+
+## Configuration
+
+### Manager Configuration
+
+```go
+config := &sessionauth.ManagerConfig{
+    CookieName: "_session",  // Custom cookie name (default: "_session")
+    Secure:     true,        // Enable secure flag for HTTPS
+    Path:       "/",         // Cookie path (default: "/")
+}
+
+manager := sessionauth.NewManager(sessionRepo, userRepo, config)
+```
+
+## Middleware Types
 
 ### Required Authentication
 
+Blocks requests without valid sessions:
+
 ```go
-// Middleware that returns 401 if user is not authenticated
-router.Post("/api/user/settings", authMiddleware.Require(
-    http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        user := sessionauth.GetUser(r.Context())
-        // user is guaranteed to be non-nil here
-        updateUserSettings(w, user.ID)
-    }),
-))
+middleware := sessionauth.NewMiddleware(manager)
 ```
 
-### With Helper Functions
+### Optional Authentication
+
+Allows requests through but populates context if valid session exists:
 
 ```go
-package main
+middleware := sessionauth.NewOptionalMiddleware(manager)
 
-import (
-    "github.com/m-t-a97/go-better-auth/sessionauth"
-    "github.com/go-chi/chi/v5"
-)
-
-func main() {
-    router := chi.NewRouter()
-    
-    // Use convenience functions
-    router.Use(sessionauth.OptionalAuth(sessionRepo, userRepo))
-    
-    // Protected routes
-    router.Post("/api/protected", sessionauth.AuthenticatedOnly(sessionRepo, userRepo)(
-        protectedHandler,
-    ))
-}
-```
-
-## API Reference
-
-### Middleware Creation
-
-#### `NewMiddleware(sessionRepo, userRepo) *Middleware`
-Creates a new session authentication middleware.
-
-```go
-middleware := sessionauth.NewMiddleware(sessionRepo, userRepo)
-```
-
-#### `WithCookieName(name) *Middleware`
-Sets a custom cookie name (default: "go-better-auth.session").
-
-```go
-middleware := sessionauth.NewMiddleware(sessionRepo, userRepo).
-    WithCookieName("my-session")
-```
-
-### Middleware Functions
-
-#### `Handler(next http.Handler) http.Handler`
-Optional authentication - attaches user info if session is valid, continues request even if not authenticated.
-
-```go
-router.Use(middleware.Handler)
-```
-
-#### `Require(next http.Handler) http.Handler`
-Required authentication - returns 401 if user is not authenticated.
-
-```go
-router.Post("/api/protected", middleware.Require(handler))
-```
-
-#### `HandlerFunc(next http.HandlerFunc) http.HandlerFunc`
-Wrapper for handler functions with optional authentication.
-
-```go
-http.HandleFunc("/optional", middleware.HandlerFunc(handler))
-```
-
-#### `RequireFunc(next http.HandlerFunc) http.HandlerFunc`
-Wrapper for handler functions with required authentication.
-
-```go
-http.HandleFunc("/protected", middleware.RequireFunc(handler))
-```
-
-### Context Helpers
-
-#### `GetUser(ctx) *domain.User`
-Retrieves the authenticated user from context. Returns nil if not authenticated.
-
-```go
-user := sessionauth.GetUser(r.Context())
+// In handler
+user := sessionauth.GetUser(r)
 if user != nil {
-    fmt.Println(user.Email)
-}
-```
-
-#### `GetSession(ctx) *domain.Session`
-Retrieves the current session from context. Returns nil if no session.
-
-```go
-session := sessionauth.GetSession(r.Context())
-if session != nil {
-    fmt.Println(session.ExpiresAt)
-}
-```
-
-#### `IsAuthenticated(ctx) bool`
-Checks if a user is authenticated.
-
-```go
-if sessionauth.IsAuthenticated(r.Context()) {
     // User is authenticated
+} else {
+    // Anonymous request
 }
-```
-
-#### `GetUserID(ctx) string`
-Gets the authenticated user's ID. Returns empty string if not authenticated.
-
-```go
-userID := sessionauth.GetUserID(r.Context())
-```
-
-### Convenience Functions
-
-#### `OptionalAuth(sessionRepo, userRepo) func(http.Handler) http.Handler`
-Creates optional auth middleware (permissive - continues even if not authenticated).
-
-```go
-router.Use(sessionauth.OptionalAuth(sessionRepo, userRepo))
-```
-
-#### `AuthenticatedOnly(sessionRepo, userRepo) func(http.Handler) http.Handler`
-Creates required auth middleware (returns 401 if not authenticated).
-
-```go
-router.Post("/api/protected", sessionauth.AuthenticatedOnly(sessionRepo, userRepo)(handler))
 ```
 
 ## Framework Examples
 
+### Standard `net/http`
+
+```go
+mux := http.NewServeMux()
+
+// Public route
+mux.HandleFunc("/public", publicHandler)
+
+// Protected route
+mux.Handle("/api/profile", authMiddleware.Handler(http.HandlerFunc(profileHandler)))
+
+http.ListenAndServe(":8080", mux)
+```
+
 ### Chi Router
 
 ```go
-package main
+import "github.com/go-chi/chi/v5"
 
-import (
-    "net/http"
-    "github.com/go-chi/chi/v5"
-    gobetterauth "github.com/m-t-a97/go-better-auth"
-    "github.com/m-t-a97/go-better-auth/sessionauth"
-)
+r := chi.NewRouter()
 
-func main() {
-    auth, _ := gobetterauth.New(config)
+// Public routes
+r.Get("/", homeHandler)
+
+// Protected routes group
+r.Group(func(r chi.Router) {
+    r.Use(authMiddleware.Handler)
     
-    router := chi.NewRouter()
-    router.Mount("/api/auth", auth.Handler())
-    
-    // Optional auth for all routes
-    authMiddleware := sessionauth.NewMiddleware(auth.SessionRepo(), auth.UserRepo())
-    router.Use(authMiddleware.Handler)
-    
-    // Public route
-    router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Public"))
-    })
-    
-    // Protected route
-    router.Post("/api/user", authMiddleware.Require(
-        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            user := sessionauth.GetUser(r.Context())
-            w.Write([]byte("Hello " + user.Name))
-        }),
-    ))
-    
-    http.ListenAndServe(":3000", router)
-}
+    r.Get("/profile", profileHandler)
+    r.Post("/settings", settingsHandler)
+})
+
+http.ListenAndServe(":8080", r)
 ```
 
 ### Echo Framework
 
 ```go
-package main
+import "github.com/labstack/echo/v4"
 
-import (
-    "net/http"
-    "github.com/labstack/echo/v4"
-    gobetterauth "github.com/m-t-a97/go-better-auth"
-    "github.com/m-t-a97/go-better-auth/sessionauth"
-)
+e := echo.New()
 
-func main() {
-    auth, _ := gobetterauth.New(config)
-    e := echo.New()
-    
-    // Mount auth handler
-    e.Any("/api/auth/*", echo.WrapHandler(auth.Handler()))
-    
-    // Create middleware
-    middleware := sessionauth.NewMiddleware(auth.SessionRepo(), auth.UserRepo())
-    
-    // Optional auth middleware
-    e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
-            middleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                // Update context
-                c.SetRequest(r)
-                next(c)
-            })).ServeHTTP(c.Response(), c.Request())
-            return nil
-        }
-    })
-    
-    // Protected route
-    e.POST("/api/user", func(c echo.Context) error {
-        user := sessionauth.GetUser(c.Request().Context())
-        if user == nil {
-            return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-        }
-        return c.JSON(http.StatusOK, user)
-    })
-    
-    e.Start(":3000")
+// Convert to Echo middleware
+echoAuth := echo.WrapMiddleware(authMiddleware.Handler)
+
+// Public route
+e.GET("/", homeHandler)
+
+// Protected routes
+protectedGroup := e.Group("/api")
+protectedGroup.Use(echoAuth)
+protectedGroup.GET("/profile", profileHandler)
+protectedGroup.POST("/settings", settingsHandler)
+
+e.Start(":8080")
+```
+
+### Gin Framework
+
+```go
+import "github.com/gin-gonic/gin"
+
+r := gin.Default()
+
+// Convert to Gin middleware
+ginAuth := func(c *gin.Context) {
+    authMiddleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        c.Request = r
+        c.Next()
+    })).ServeHTTP(c.Writer, c.Request)
 }
-```
 
-### Standard Library
+// Public route
+r.GET("/", homeHandler)
 
-```go
-package main
-
-import (
-    "net/http"
-    gobetterauth "github.com/m-t-a97/go-better-auth"
-    "github.com/m-t-a97/go-better-auth/sessionauth"
-)
-
-func main() {
-    auth, _ := gobetterauth.New(config)
-    
-    mux := http.NewServeMux()
-    
-    // Mount auth
-    mux.Handle("/api/auth/", auth.Handler())
-    
-    // Create middleware
-    authMiddleware := sessionauth.NewMiddleware(auth.SessionRepo(), auth.UserRepo())
-    
-    // Public route
-    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Public"))
-    })
-    
-    // Protected route
-    mux.Handle("/api/user", authMiddleware.Require(
-        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            user := sessionauth.GetUser(r.Context())
-            w.Write([]byte("Hello " + user.Name))
-        }),
-    ))
-    
-    http.ListenAndServe(":3000", mux)
+// Protected routes
+authorized := r.Group("/api")
+authorized.Use(ginAuth)
+{
+    authorized.GET("/profile", profileHandler)
+    authorized.POST("/settings", settingsHandler)
 }
+
+r.Run(":8080")
 ```
 
-## Session Token Extraction
+## Accessing Session & User Data
 
-The middleware automatically extracts session tokens in this order:
-
-1. **Authorization Header**: `Authorization: Bearer <token>`
-2. **Cookie**: Cookie with name from `m.cookieName` (default: "go-better-auth.session")
-
-You can customize the cookie name:
+### Safe Access (Returns nil if not present)
 
 ```go
-middleware := sessionauth.NewMiddleware(sessionRepo, userRepo).
-    WithCookieName("custom-session-name")
-```
-
-## Error Handling
-
-The middleware handles the following scenarios:
-
-| Scenario | Optional Auth | Required Auth |
-|----------|---------------|---------------|
-| Valid session | User attached | User attached |
-| No token found | Continue (no user) | Return 401 |
-| Invalid session | Continue (no user) | Return 401 |
-| Expired session | Continue (no user) | Return 401 |
-| User not found | Continue (no user) | Return 401 |
-
-When using optional authentication, you can check if a user is authenticated:
-
-```go
-if sessionauth.IsAuthenticated(r.Context()) {
-    // User is authenticated
-} else {
-    // No user or invalid session
-}
-```
-
-## Testing
-
-Here's an example of testing a handler with session auth:
-
-```go
-package main
-
-import (
-    "context"
-    "net/http"
-    "net/http/httptest"
-    "testing"
-    
-    "github.com/m-t-a97/go-better-auth/domain"
-    "github.com/m-t-a97/go-better-auth/sessionauth"
-)
-
-func TestProtectedHandler(t *testing.T) {
-    // Create test user and context
-    user := &domain.User{
-        ID:    "123",
-        Name:  "Test User",
-        Email: "test@example.com",
+func handler(w http.ResponseWriter, r *http.Request) {
+    user := sessionauth.GetUser(r)
+    if user == nil {
+        // No authenticated user
+        return
     }
-    ctx := context.WithValue(context.Background(), "sessionauth:user", user)
     
-    // Create request with context
-    req := httptest.NewRequest("GET", "/api/user", nil).WithContext(ctx)
-    w := httptest.NewRecorder()
+    session := sessionauth.GetSession(r)
+    // Use user and session...
+}
+```
+
+### Must Access (Panics if not present)
+
+Use only in handlers protected by required authentication:
+
+```go
+func protectedHandler(w http.ResponseWriter, r *http.Request) {
+    // This will panic if middleware isn't applied - good for catching bugs early
+    user := sessionauth.MustGetUser(r)
+    session := sessionauth.MustGetSession(r)
     
-    // Test handler
-    handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        user := sessionauth.GetUser(r.Context())
-        if user == nil {
-            http.Error(w, "Not authenticated", http.StatusUnauthorized)
+    // User is guaranteed to exist here
+}
+```
+
+## Complete Example with Login/Logout
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "net/http"
+    "time"
+    
+    "github.com/m-t-a97/go-better-auth/sessionauth"
+    "github.com/m-t-a97/go-better-auth/usecase"
+)
+
+func main() {
+    // Setup (repositories, use cases, etc.)
+    var authUseCase *usecase.AuthUseCase
+    var sessionRepo domain.SessionRepository
+    var userRepo domain.UserRepository
+    
+    manager := sessionauth.NewManager(sessionRepo, userRepo, &sessionauth.ManagerConfig{
+        Secure: true,
+    })
+    
+    authMiddleware := sessionauth.NewMiddleware(manager)
+    
+    // Routes
+    http.HandleFunc("/login", loginHandler(authUseCase, manager))
+    http.HandleFunc("/logout", logoutHandler(manager))
+    http.Handle("/profile", authMiddleware.Handler(http.HandlerFunc(profileHandler)))
+    
+    http.ListenAndServe(":8080", nil)
+}
+
+func loginHandler(authUseCase *usecase.AuthUseCase, manager *sessionauth.Manager) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var input usecase.SignInEmailInput
+        if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+            http.Error(w, "Invalid request", http.StatusBadRequest)
             return
         }
-        w.Write([]byte(user.Email))
-    })
-    
-    handler.ServeHTTP(w, req)
-    
-    if w.Code != http.StatusOK {
-        t.Errorf("Expected 200, got %d", w.Code)
+        
+        // Authenticate user
+        output, err := authUseCase.SignInEmail(r.Context(), input)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusUnauthorized)
+            return
+        }
+        
+        // Set session cookie
+        manager.SetSessionCookie(w, output.Session.Token, output.Session.ExpiresAt)
+        
+        json.NewEncoder(w).Encode(map[string]interface{}{
+            "user": output.User,
+        })
     }
+}
+
+func logoutHandler(manager *sessionauth.Manager) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // Clear session cookie
+        manager.ClearSessionCookie(w)
+        
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(map[string]string{
+            "message": "Logged out successfully",
+        })
+    }
+}
+
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+    user := sessionauth.MustGetUser(r)
+    
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "user": user,
+    })
 }
 ```
 
 ## Security Considerations
 
-1. **HTTPS Only** - Always use HTTPS in production. Configure cookies with `Secure` flag.
-2. **SameSite Policy** - Session cookies should have `SameSite=Strict` or `SameSite=Lax`.
-3. **CSRF Protection** - Use CSRF middleware from `go-better-auth/csrf` for state-changing requests.
-4. **Session Expiration** - Sessions automatically expire based on configured duration.
-5. **Rate Limiting** - Consider using rate limiting middleware from `go-better-auth/ratelimit`.
+### Production Settings
+
+```go
+config := &sessionauth.ManagerConfig{
+    Secure: true,  // MUST be true in production (requires HTTPS)
+}
+```
+
+### Cookie Security
+
+The middleware automatically sets:
+- `HttpOnly: true` - Prevents JavaScript access to cookies
+- `SameSite: Lax` - CSRF protection
+- `Secure: true` (when configured) - HTTPS only
+
+### Session Expiration
+
+Sessions are automatically validated for expiration. Expired sessions:
+1. Return 401 Unauthorized
+2. Are deleted from the database
+3. Have their cookie cleared
+
+## Context Keys
+
+The middleware stores data in the request context using these keys:
+
+- `"session"` - The validated session (`*domain.Session`)
+- `"user"` - The authenticated user (`*domain.User`)
+
+## Error Handling
+
+The middleware handles these scenarios:
+
+| Scenario | Required Auth | Optional Auth |
+|----------|--------------|---------------|
+| No cookie | 401 Unauthorized | Continue (no context) |
+| Invalid token | 401 Unauthorized | Continue (no context) |
+| Expired session | 401 Unauthorized | Continue (no context) |
+| Valid session | Add to context → Continue | Add to context → Continue |
+
+## Testing
+
+Run the test suite:
+
+```bash
+go test ./sessionauth/...
+```
 
 ## License
 
-MIT
+See the main project LICENSE file.

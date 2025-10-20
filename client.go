@@ -371,7 +371,10 @@ func (ba *GoBetterAuth) Repositories() (
 // SessionAuth returns a session authentication middleware
 // This middleware can be used to protect routes and authenticate requests
 func (ba *GoBetterAuth) SessionAuth() *sessionauth.Middleware {
-	return sessionauth.NewMiddleware(ba.sessionRepo, ba.userRepo)
+	manager := sessionauth.NewManager(ba.sessionRepo, ba.userRepo, &sessionauth.ManagerConfig{
+		Secure: ba.config.Advanced.SecureCookies,
+	})
+	return sessionauth.NewMiddleware(manager)
 }
 
 // Handler returns an http.Handler for all authentication endpoints

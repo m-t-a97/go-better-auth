@@ -41,8 +41,21 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers
 	w.Header().Set("Content-Type", "application/json")
 
-	// Parse the request path
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/auth"), "/")
+	// Parse the request path relative to the root
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// Expect at least ["auth", "{endpoint}", ...]
+	if len(parts) < 1 {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	// If the first segment isn't "auth", default to /auth/{endpoint}
+	if parts[0] != "auth" {
+		// e.g. /sign-up -> /auth/sign-up
+		parts = append([]string{"auth"}, parts...)
+	}
+
+	// Now require at least ["auth","{endpoint}"]
 	if len(parts) < 2 {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
@@ -100,7 +113,7 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// signUpEmail handles POST /api/auth/sign-up/email
+// signUpEmail handles POST /auth/sign-up/email
 func (h *AuthHandler) signUpEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
@@ -127,7 +140,7 @@ func (h *AuthHandler) signUpEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, output)
 }
 
-// signInEmail handles POST /api/auth/sign-in/email
+// signInEmail handles POST /auth/sign-in/email
 func (h *AuthHandler) signInEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
@@ -152,7 +165,7 @@ func (h *AuthHandler) signInEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, output)
 }
 
-// signOut handles POST /api/auth/sign-out
+// signOut handles POST /auth/sign-out
 func (h *AuthHandler) signOut(w http.ResponseWriter, r *http.Request) {
 	token := h.getSessionToken(r)
 	if token == "" {
@@ -170,7 +183,7 @@ func (h *AuthHandler) signOut(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Signed out successfully"})
 }
 
-// getSession handles GET /api/auth/session
+// getSession handles GET /auth/session
 func (h *AuthHandler) getSession(w http.ResponseWriter, r *http.Request) {
 	token := h.getSessionToken(r)
 	if token == "" {
@@ -190,7 +203,7 @@ func (h *AuthHandler) getSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// sendVerificationEmail handles POST /api/auth/send-verification-email
+// sendVerificationEmail handles POST /auth/send-verification-email
 func (h *AuthHandler) sendVerificationEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
@@ -210,7 +223,7 @@ func (h *AuthHandler) sendVerificationEmail(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Verification email sent"})
 }
 
-// verifyEmail handles POST /api/auth/verify-email
+// verifyEmail handles POST /auth/verify-email
 func (h *AuthHandler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token string `json:"token"`
@@ -230,7 +243,7 @@ func (h *AuthHandler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
-// requestPasswordReset handles POST /api/auth/request-password-reset
+// requestPasswordReset handles POST /auth/request-password-reset
 func (h *AuthHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
@@ -250,7 +263,7 @@ func (h *AuthHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password reset email sent"})
 }
 
-// resetPassword handles POST /api/auth/reset-password
+// resetPassword handles POST /auth/reset-password
 func (h *AuthHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token       string `json:"token"`
@@ -271,7 +284,7 @@ func (h *AuthHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password reset successfully"})
 }
 
-// changePassword handles POST /api/auth/change-password
+// changePassword handles POST /auth/change-password
 func (h *AuthHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		CurrentPassword     string `json:"currentPassword"`
@@ -306,7 +319,7 @@ func (h *AuthHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Password changed successfully"})
 }
 
-// oauthAuthorize handles GET /api/auth/oauth/{provider}
+// oauthAuthorize handles GET /auth/oauth/{provider}
 func (h *AuthHandler) oauthAuthorize(w http.ResponseWriter, r *http.Request, provider string) {
 	state := r.URL.Query().Get("state")
 	redirectURI := r.URL.Query().Get("redirect_uri")
@@ -325,17 +338,17 @@ func (h *AuthHandler) oauthAuthorize(w http.ResponseWriter, r *http.Request, pro
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 }
 
-// enableMFA handles POST /api/auth/enable-mfa - NOT IMPLEMENTED YET
+// enableMFA handles POST /auth/enable-mfa - NOT IMPLEMENTED YET
 func (h *AuthHandler) enableMFA(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotImplemented, "MFA endpoints not yet implemented", "not_implemented")
 }
 
-// disableMFA handles POST /api/auth/disable-mfa - NOT IMPLEMENTED YET
+// disableMFA handles POST /auth/disable-mfa - NOT IMPLEMENTED YET
 func (h *AuthHandler) disableMFA(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotImplemented, "MFA endpoints not yet implemented", "not_implemented")
 }
 
-// verifyMFA handles POST /api/auth/verify-mfa - NOT IMPLEMENTED YET
+// verifyMFA handles POST /auth/verify-mfa - NOT IMPLEMENTED YET
 func (h *AuthHandler) verifyMFA(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotImplemented, "MFA endpoints not yet implemented", "not_implemented")
 }

@@ -42,8 +42,10 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Extract the endpoint name from the URL path
-	// Assumes "/auth" is already stripped by the router
-	endpoint := strings.TrimPrefix(r.URL.Path, "/")
+	// Handle both cases: with or without "/auth" prefix
+	endpoint := r.URL.Path
+	endpoint = strings.TrimPrefix(endpoint, "/auth")
+	endpoint = strings.TrimPrefix(endpoint, "/")
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
 	if endpoint == "" {

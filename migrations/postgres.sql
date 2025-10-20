@@ -1,9 +1,9 @@
--- Go Better Auth Database Schema (PostgreSQL)
--- Version: 1.0.0
+-- Enable UUIDs
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-    id VARCHAR(255) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     email_verified BOOLEAN DEFAULT FALSE,
@@ -16,8 +16,8 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Sessions table
 CREATE TABLE IF NOT EXISTS sessions (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     token VARCHAR(512) UNIQUE NOT NULL,
     ip_address VARCHAR(45),
@@ -33,8 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
 -- Accounts table (for credentials and OAuth providers)
 CREATE TABLE IF NOT EXISTS accounts (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
     account_id VARCHAR(255) NOT NULL,
     provider_id VARCHAR(255) NOT NULL,
     access_token TEXT,
@@ -55,7 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_accounts_provider_account ON accounts(provider_id
 
 -- Verifications table (for email verification and password reset tokens)
 CREATE TABLE IF NOT EXISTS verifications (
-    id VARCHAR(255) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     identifier VARCHAR(255) NOT NULL,
     value VARCHAR(512) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
@@ -69,8 +69,8 @@ CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires
 -- Two-Factor Authentication tables
 -- two_factor_auth table (for storing MFA configurations)
 CREATE TABLE IF NOT EXISTS two_factor_auth (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL UNIQUE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE,
     method VARCHAR(50) NOT NULL DEFAULT 'totp',
     is_enabled BOOLEAN DEFAULT FALSE,
     backup_codes JSONB DEFAULT '[]',
@@ -86,8 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_two_factor_auth_method ON two_factor_auth(method)
 
 -- totp_secrets table (for storing TOTP-specific secrets)
 CREATE TABLE IF NOT EXISTS totp_secrets (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
     secret VARCHAR(255) NOT NULL,
     qr_code TEXT,
     backup_codes JSONB DEFAULT '[]',
@@ -104,8 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_totp_secrets_created_at ON totp_secrets(created_a
 
 -- mfa_challenges table (for storing pending MFA challenges during login)
 CREATE TABLE IF NOT EXISTS mfa_challenges (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
     method VARCHAR(50) NOT NULL DEFAULT 'totp',
     challenge VARCHAR(512),
     expires_at TIMESTAMP NOT NULL,

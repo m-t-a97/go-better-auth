@@ -44,24 +44,22 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Extract the endpoint name from the URL path
 	// Assumes "/auth" is already stripped by the router
 	endpoint := strings.TrimPrefix(r.URL.Path, "/")
-	parts := strings.Split(endpoint, "/")
+	endpoint = strings.TrimSuffix(endpoint, "/")
 
-	// Now require at least ["{endpoint}"]
-	if len(parts) < 1 || parts[0] == "" {
+	if endpoint == "" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
 	method := strings.ToUpper(r.Method)
-	endpoint = strings.TrimSpace(parts[0])
 
 	// Route to appropriate handler
 	switch method {
 	case http.MethodPost:
 		switch endpoint {
-		case "sign-up":
+		case "sign-up/email":
 			h.signUpEmail(w, r)
-		case "sign-in":
+		case "sign-in/email":
 			h.signInEmail(w, r)
 		case "sign-out":
 			h.signOut(w, r)
@@ -89,14 +87,18 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch endpoint {
 		case "session":
 			h.getSession(w, r)
-		case "oauth":
-			if len(parts) > 2 {
-				h.oauthAuthorize(w, r, parts[2])
-			} else {
-				http.Error(w, "Provider required", http.StatusBadRequest)
-			}
 		default:
-			http.Error(w, "Not found", http.StatusNotFound)
+			// Handle OAuth callback with dynamic provider
+			if strings.HasPrefix(endpoint, "oauth/") {
+				parts := strings.Split(endpoint, "/")
+				if len(parts) >= 2 {
+					h.oauthAuthorize(w, r, parts[1])
+				} else {
+					http.Error(w, "Provider required", http.StatusBadRequest)
+				}
+			} else {
+				http.Error(w, "Not found", http.StatusNotFound)
+			}
 		}
 
 	default:

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/m-t-a97/go-better-auth/adapters/postgres"
 	"github.com/m-t-a97/go-better-auth/adapters/sqlite"
 	"github.com/m-t-a97/go-better-auth/csrf"

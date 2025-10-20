@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+// AuthConfig holds the configuration for authentication
+type AuthConfig struct {
+	BaseURL                  string
+	SessionExpiresIn         time.Duration
+	VerificationTokenExpiry  time.Duration
+	RequireEmailVerification bool
+	AutoSignIn               bool
+}
+
 // User represents an authenticated user in the system
 type User struct {
 	ID            string    `json:"id"`
@@ -66,4 +75,62 @@ type SignInEmailInput struct {
 type SignInEmailOutput struct {
 	User    *User    `json:"user"`
 	Session *Session `json:"session"`
+}
+
+// SignUpEmailInput represents the input for email signup
+type SignUpEmailInput struct {
+	Email    string  `json:"email"`
+	Password string  `json:"password"`
+	Name     string  `json:"name"`
+	Image    *string `json:"image,omitempty"`
+}
+
+// SignUpEmailOutput represents the output of email signup
+type SignUpEmailOutput struct {
+	User    *User    `json:"user"`
+	Session *Session `json:"session"`
+}
+
+// RefreshTokenInput represents the input for token refresh
+type RefreshTokenInput struct {
+	UserID    string `json:"user_id"`
+	Provider  string `json:"provider"`
+	AccountID string `json:"account_id"`
+}
+
+// RefreshTokenOutput represents the refreshed tokens
+type RefreshTokenOutput struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+}
+
+// RefreshSessionInput represents the input for session refresh
+type RefreshSessionInput struct {
+	Token string `json:"token"`
+}
+
+// RefreshSessionOutput represents the output of session refresh
+type RefreshSessionOutput struct {
+	Session *Session `json:"session"`
+	User    *User    `json:"user"`
+}
+
+// OAuthTokens represents OAuth tokens
+type OAuthTokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+	Scope        string `json:"scope"`
+}
+
+// OAuthUserInfo represents user information from OAuth provider
+type OAuthUserInfo struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	EmailVerified bool   `json:"email_verified"`
+	Image         string `json:"image"`
 }

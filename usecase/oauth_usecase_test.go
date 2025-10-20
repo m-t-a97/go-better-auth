@@ -12,8 +12,8 @@ import (
 
 // Mock OAuth Provider for testing
 type MockOAuthProvider struct {
-	tokens              *usecase.OAuthTokens
-	userInfo            *usecase.OAuthUserInfo
+	tokens              *domain.OAuthTokens
+	userInfo            *domain.OAuthUserInfo
 	exchangeCodeErr     error
 	getUserInfoErr      error
 	shouldFailWithCode  string
@@ -28,7 +28,7 @@ func (m *MockOAuthProvider) GetAuthURL(state, redirectURI string) string {
 	return "https://mock-provider.com/auth?state=" + state
 }
 
-func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*usecase.OAuthTokens, error) {
+func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error) {
 	if m.exchangeCodeErr != nil {
 		return nil, m.exchangeCodeErr
 	}
@@ -38,7 +38,7 @@ func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code, redirectURI 
 	return m.tokens, nil
 }
 
-func (m *MockOAuthProvider) GetUserInfo(ctx context.Context, accessToken string) (*usecase.OAuthUserInfo, error) {
+func (m *MockOAuthProvider) GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error) {
 	if m.getUserInfoErr != nil {
 		return nil, m.getUserInfoErr
 	}
@@ -57,21 +57,21 @@ func TestOAuthHandleCallback(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
 	provider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken:  "test-access-token",
 			RefreshToken: "test-refresh-token",
 			IDToken:      "test-id-token",
 			ExpiresIn:    3600,
 			Scope:        "profile email",
 		},
-		userInfo: &usecase.OAuthUserInfo{
+		userInfo: &domain.OAuthUserInfo{
 			ID:            "oauth-user-123",
 			Email:         "user@example.com",
 			Name:          "Test User",
@@ -192,21 +192,21 @@ func TestOAuthRefreshTokenExpired(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
 	provider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken: "new-access-token",
 		},
 	}
 
 	uc.RegisterProvider(provider)
 
-	_, err := uc.RefreshToken(context.Background(), &usecase.RefreshTokenInput{
+	_, err := uc.RefreshToken(context.Background(), &domain.RefreshTokenInput{
 		UserID:   user.ID,
 		Provider: "google",
 	})
@@ -247,13 +247,13 @@ func TestOAuthRefreshTokenNoRefreshToken(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
-	_, err := uc.RefreshToken(context.Background(), &usecase.RefreshTokenInput{
+	_, err := uc.RefreshToken(context.Background(), &domain.RefreshTokenInput{
 		UserID:   user.ID,
 		Provider: "google",
 	})
@@ -274,7 +274,7 @@ func TestOAuthHandleCallbackInvalidCode(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
@@ -304,14 +304,14 @@ func TestOAuthHandleCallbackExpiredToken(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
 	provider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken:  "expired-token",
 			RefreshToken: "test-refresh-token",
 			IDToken:      "test-id-token",
@@ -341,7 +341,7 @@ func TestOAuthHandleCallbackExchangeCodeError(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
@@ -371,14 +371,14 @@ func TestOAuthHandleCallbackUserInfoError(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
 	provider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken:  "test-access-token",
 			RefreshToken: "test-refresh-token",
 			IDToken:      "test-id-token",
@@ -408,7 +408,7 @@ func TestOAuthProviderNotFound(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
@@ -432,7 +432,7 @@ func TestOAuthGetAuthURLProviderNotFound(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
@@ -478,21 +478,21 @@ func TestOAuthHandleCallbackExistingUser(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
 	)
 
 	provider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken:  "new-access-token",
 			RefreshToken: "new-refresh-token",
 			IDToken:      "test-id-token",
 			ExpiresIn:    3600,
 			Scope:        "profile email",
 		},
-		userInfo: &usecase.OAuthUserInfo{
+		userInfo: &domain.OAuthUserInfo{
 			ID:            "oauth-user-123", // Same provider ID
 			Email:         "user@example.com",
 			Name:          "Existing User",
@@ -532,7 +532,7 @@ func TestOAuthHandleCallbackMultipleProviders(t *testing.T) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          "https://example.com",
 			SessionExpiresIn: 24 * time.Hour,
 		},
@@ -540,14 +540,14 @@ func TestOAuthHandleCallbackMultipleProviders(t *testing.T) {
 
 	// Register multiple providers
 	googleProvider := &MockOAuthProvider{
-		tokens: &usecase.OAuthTokens{
+		tokens: &domain.OAuthTokens{
 			AccessToken:  "google-access-token",
 			RefreshToken: "google-refresh-token",
 			IDToken:      "google-id-token",
 			ExpiresIn:    3600,
 			Scope:        "profile email",
 		},
-		userInfo: &usecase.OAuthUserInfo{
+		userInfo: &domain.OAuthUserInfo{
 			ID:            "google-user-123",
 			Email:         "user@gmail.com",
 			Name:          "Google User",

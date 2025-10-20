@@ -204,13 +204,13 @@ Call the use case from your HTTP handler:
 authUseCase := auth.AuthUseCase()
 
 // Sign up
-output, err := authUseCase.SignUpEmail(ctx, &usecase.SignUpEmailInput{
+output, err := authUseCase.SignUpEmail(ctx, &domain.SignUpEmailInput{
     Email:    "user@example.com",
     Password: "secure123",
 })
 
 // Sign in
-output, err := authUseCase.SignInEmail(ctx, &usecase.SignInEmailInput{
+output, err := authUseCase.SignInEmail(ctx, &domain.SignInEmailInput{
     Email:    "user@example.com",
     Password: "secure123",
 })
@@ -227,7 +227,7 @@ router.Post("/api/auth/sign-up/email", func(w http.ResponseWriter, r *http.Reque
     json.NewDecoder(r.Body).Decode(&req)
     
     // Call use case
-    output, err := authUseCase.SignUpEmail(r.Context(), &usecase.SignUpEmailInput{
+    output, err := authUseCase.SignUpEmail(r.Context(), &domain.SignUpEmailInput{
         Email:    req.Email,
         Password: req.Password,
     })
@@ -331,7 +331,7 @@ router.Get("/api/auth/session", func(w http.ResponseWriter, r *http.Request) {
     }
     
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    json.NewEncoder(w).Encode(map[string]any{
         "user":    user,
         "session": session,
     })
@@ -594,7 +594,7 @@ router.Post("/api/auth/enable-mfa", func(w http.ResponseWriter, r *http.Request)
     }
     
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    json.NewEncoder(w).Encode(map[string]any{
         "secret":     output.Secret,
         "qrCodeURL":  output.QRCodeURL,
     })
@@ -685,7 +685,7 @@ router.Post("/api/auth/oauth/{provider}/refresh", func(w http.ResponseWriter, r 
     }
     
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    json.NewEncoder(w).Encode(map[string]any{
         "accessToken":  output.AccessToken,
         "refreshToken": output.RefreshToken,
         "idToken":      output.IDToken,
@@ -729,7 +729,7 @@ router.Post("/api/auth/session/refresh", func(w http.ResponseWriter, r *http.Req
     }
     
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    json.NewEncoder(w).Encode(map[string]any{
         "user":    output.User,
         "session": output.Session,
     })

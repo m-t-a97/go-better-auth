@@ -365,7 +365,7 @@ func (r *SQLiteVerificationRepository) Create(ctx context.Context, verification 
 
 func (r *SQLiteVerificationRepository) FindByIdentifierAndValue(ctx context.Context, identifier, value string) (*domain.Verification, error) {
 	var query string
-	var args []interface{}
+	var args []any
 
 	if identifier == "" {
 		// Search by value only
@@ -373,13 +373,13 @@ func (r *SQLiteVerificationRepository) FindByIdentifierAndValue(ctx context.Cont
 			SELECT id, identifier, value, expires_at, created_at
 			FROM verifications WHERE value = ?
 		`
-		args = []interface{}{value}
+		args = []any{value}
 	} else {
 		query = `
 			SELECT id, identifier, value, expires_at, created_at
 			FROM verifications WHERE identifier = ? AND value = ?
 		`
-		args = []interface{}{identifier, value}
+		args = []any{identifier, value}
 	}
 
 	verification := &domain.Verification{}

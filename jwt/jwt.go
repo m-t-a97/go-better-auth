@@ -166,7 +166,7 @@ func (m *Manager) CreateTokenPair(userID, email, name string, accessTokenExpiry,
 func (m *Manager) VerifyToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
 
-	token, err := jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (interface{}, error) {
+	token, err := jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (any, error) {
 		// Verify signing method
 		if _, ok := token.Method.(*jwtpkg.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -224,7 +224,7 @@ func (m *Manager) RefreshAccessToken(refreshTokenStr string, accessTokenExpiry t
 // IsTokenExpired checks if a token is expired
 func (m *Manager) IsTokenExpired(tokenStr string) bool {
 	claims := &Claims{}
-	_, err := jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (interface{}, error) {
+	_, err := jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (any, error) {
 		return m.publicKey, nil
 	})
 
@@ -244,7 +244,7 @@ func (m *Manager) IsTokenExpired(tokenStr string) bool {
 // GetRemainingTime returns the remaining time before token expiration
 func (m *Manager) GetRemainingTime(tokenStr string) time.Duration {
 	claims := &Claims{}
-	jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (interface{}, error) {
+	jwtpkg.ParseWithClaims(tokenStr, claims, func(token *jwtpkg.Token) (any, error) {
 		return m.publicKey, nil
 	})
 

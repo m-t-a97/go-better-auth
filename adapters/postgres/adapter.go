@@ -354,7 +354,7 @@ func (r *PostgresVerificationRepository) Create(ctx context.Context, verificatio
 
 func (r *PostgresVerificationRepository) FindByIdentifierAndValue(ctx context.Context, identifier, value string) (*domain.Verification, error) {
 	var query string
-	var args []interface{}
+	var args []any
 
 	if identifier == "" {
 		// Search by value only
@@ -362,13 +362,13 @@ func (r *PostgresVerificationRepository) FindByIdentifierAndValue(ctx context.Co
 			SELECT id, identifier, value, expires_at, created_at
 			FROM verifications WHERE value = $1
 		`
-		args = []interface{}{value}
+		args = []any{value}
 	} else {
 		query = `
 			SELECT id, identifier, value, expires_at, created_at
 			FROM verifications WHERE identifier = $1 AND value = $2
 		`
-		args = []interface{}{identifier, value}
+		args = []any{identifier, value}
 	}
 
 	verification := &domain.Verification{}

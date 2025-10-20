@@ -132,7 +132,7 @@ func respondUnauthorized(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"error": map[string]string{
 			"code":    "unauthorized",
 			"message": message,

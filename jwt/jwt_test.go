@@ -178,7 +178,7 @@ func TestIsTokenExpired(t *testing.T) {
 		// Note: This might fail due to time precision, but that's okay
 		// The important thing is the token cannot be verified
 		claims := &Claims{}
-		_, err := jwtpkg.ParseWithClaims(tokenPair.AccessToken, claims, func(token *jwtpkg.Token) (interface{}, error) {
+		_, err := jwtpkg.ParseWithClaims(tokenPair.AccessToken, claims, func(token *jwtpkg.Token) (any, error) {
 			return manager.publicKey, nil
 		})
 		if err == nil {

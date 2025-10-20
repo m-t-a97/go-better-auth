@@ -7,31 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/scrypt"
 
 	"github.com/m-t-a97/go-better-auth/domain"
 )
-
-// PasswordHasher defines the interface for password hashing
-type PasswordHasher interface {
-	Hash(password string) (string, error)
-	Verify(password, hash string) bool
-}
-
-// EmailSender defines the interface for sending emails
-type EmailSender interface {
-	SendVerificationEmail(ctx context.Context, email, token, url string) error
-	SendPasswordResetEmail(ctx context.Context, email, token, url string) error
-}
-
-// AuthConfig holds the configuration for authentication
-type AuthConfig struct {
-	BaseURL                  string
-	SessionExpiresIn         time.Duration
-	VerificationTokenExpiry  time.Duration
-	RequireEmailVerification bool
-	AutoSignIn               bool
-}
 
 // AuthUseCase handles authentication business logic
 type AuthUseCase struct {
@@ -41,7 +19,7 @@ type AuthUseCase struct {
 	verificationRepo VerificationRepository
 	passwordHasher   PasswordHasher
 	emailSender      EmailSender
-	config           *AuthConfig
+	config           *domain.AuthConfig
 }
 
 // NewAuthUseCase creates a new authentication use case
@@ -52,7 +30,7 @@ func NewAuthUseCase(
 	verificationRepo VerificationRepository,
 	passwordHasher PasswordHasher,
 	emailSender EmailSender,
-	config *AuthConfig,
+	config *domain.AuthConfig,
 ) *AuthUseCase {
 	if config.SessionExpiresIn == 0 {
 		config.SessionExpiresIn = 7 * 24 * time.Hour // 7 days default
@@ -69,20 +47,6 @@ func NewAuthUseCase(
 		emailSender:      emailSender,
 		config:           config,
 	}
-}
-
-// SignUpEmailInput represents the input for email signup
-type SignUpEmailInput struct {
-	Email    string  `json:"email"`
-	Password string  `json:"password"`
-	Name     string  `json:"name"`
-	Image    *string `json:"image"`
-}
-
-// SignUpEmailOutput represents the output of email signup
-type SignUpEmailOutput struct {
-	User    *domain.User    `json:"user"`
-	Session *domain.Session `json:"session"`
 }
 
 // validatePassword checks password policy compliance
@@ -149,7 +113,7 @@ func validatePassword(password string) error {
 }
 
 // SignUpEmail registers a new user with email and password
-func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *SignUpEmailInput) (*SignUpEmailOutput, error) {
+func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *domain.SignUpEmailInput) (*domain.SignUpEmailOutput, error) {
 	// Validate password policy
 	if err := validatePassword(input.Password); err != nil {
 		return nil, err
@@ -227,7 +191,7 @@ func (uc *AuthUseCase) SignUpEmail(ctx context.Context, input *SignUpEmailInput)
 		}
 	}
 
-	return &SignUpEmailOutput{
+	return &domain.SignUpEmailOutput{
 		User:    user,
 		Session: session,
 	}, nil
@@ -311,19 +275,8 @@ func (uc *AuthUseCase) GetSession(ctx context.Context, token string) (*domain.Se
 	return session, user, nil
 }
 
-// RefreshSessionInput represents the input for session refresh
-type RefreshSessionInput struct {
-	Token string
-}
-
-// RefreshSessionOutput represents the output of session refresh
-type RefreshSessionOutput struct {
-	Session *domain.Session
-	User    *domain.User
-}
-
 // RefreshSession extends the expiration time of a session
-func (uc *AuthUseCase) RefreshSession(ctx context.Context, input *RefreshSessionInput) (*RefreshSessionOutput, error) {
+func (uc *AuthUseCase) RefreshSession(ctx context.Context, input *domain.RefreshSessionInput) (*domain.RefreshSessionOutput, error) {
 	session, err := uc.sessionRepo.FindByToken(ctx, input.Token)
 	if err != nil {
 		return nil, domain.ErrInvalidToken
@@ -349,7 +302,7 @@ func (uc *AuthUseCase) RefreshSession(ctx context.Context, input *RefreshSession
 		return nil, domain.ErrUserNotFound
 	}
 
-	return &RefreshSessionOutput{
+	return &domain.RefreshSessionOutput{
 		Session: session,
 		User:    user,
 	}, nil
@@ -585,58 +538,4 @@ func generateToken() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
-}
-
-// ScryptPasswordHasher implements password hashing using scrypt
-type ScryptPasswordHasher struct{}
-
-func NewScryptPasswordHasher() *ScryptPasswordHasher {
-	return &ScryptPasswordHasher{}
-}
-
-func (h *ScryptPasswordHasher) Hash(password string) (string, error) {
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return "", err
-	}
-
-	hash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-
-	// Combine salt and hash
-	combined := append(salt, hash...)
-	return base64.StdEncoding.EncodeToString(combined), nil
-}
-
-func (h *ScryptPasswordHasher) Verify(password, encoded string) bool {
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return false
-	}
-
-	if len(decoded) < 48 {
-		return false
-	}
-
-	salt := decoded[:16]
-	hash := decoded[16:]
-
-	newHash, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
-	if err != nil {
-		return false
-	}
-
-	// Constant time comparison
-	if len(newHash) != len(hash) {
-		return false
-	}
-
-	var v byte
-	for i := 0; i < len(hash); i++ {
-		v |= hash[i] ^ newHash[i]
-	}
-
-	return v == 0
 }

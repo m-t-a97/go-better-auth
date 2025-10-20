@@ -15,39 +15,13 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain"
 )
 
-// OAuthProvider defines the interface for OAuth providers
-type OAuthProvider interface {
-	GetAuthURL(state, redirectURI string) string
-	ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokens, error)
-	GetUserInfo(ctx context.Context, accessToken string) (*OAuthUserInfo, error)
-	GetProviderID() string
-}
-
-// OAuthTokens represents OAuth tokens
-type OAuthTokens struct {
-	AccessToken  string
-	RefreshToken string
-	IDToken      string
-	ExpiresIn    int64
-	Scope        string
-}
-
-// OAuthUserInfo represents user information from OAuth provider
-type OAuthUserInfo struct {
-	ID            string
-	Email         string
-	Name          string
-	Image         string
-	EmailVerified bool
-}
-
 // OAuthUseCase handles OAuth authentication
 type OAuthUseCase struct {
 	userRepo    UserRepository
 	accountRepo AccountRepository
 	sessionRepo SessionRepository
 	providers   map[string]OAuthProvider
-	config      *AuthConfig
+	config      *domain.AuthConfig
 }
 
 // NewOAuthUseCase creates a new OAuth use case
@@ -55,7 +29,7 @@ func NewOAuthUseCase(
 	userRepo UserRepository,
 	accountRepo AccountRepository,
 	sessionRepo SessionRepository,
-	config *AuthConfig,
+	config *domain.AuthConfig,
 ) *OAuthUseCase {
 	return &OAuthUseCase{
 		userRepo:    userRepo,
@@ -126,23 +100,8 @@ func (uc *OAuthUseCase) HandleCallback(ctx context.Context, providerID, code, re
 	}, nil
 }
 
-// RefreshTokenInput represents the input for token refresh
-type RefreshTokenInput struct {
-	UserID    string
-	Provider  string
-	AccountID string
-}
-
-// RefreshTokenOutput represents the refreshed tokens
-type RefreshTokenOutput struct {
-	AccessToken  string
-	RefreshToken string
-	IDToken      string
-	ExpiresIn    int64
-}
-
 // RefreshToken refreshes an OAuth access token using the refresh token
-func (uc *OAuthUseCase) RefreshToken(ctx context.Context, input *RefreshTokenInput) (*RefreshTokenOutput, error) {
+func (uc *OAuthUseCase) RefreshToken(ctx context.Context, input *domain.RefreshTokenInput) (*domain.RefreshTokenOutput, error) {
 	// Find the account by user ID and provider
 	account, err := uc.accountRepo.FindByUserIDAndProvider(ctx, input.UserID, input.Provider)
 	if err != nil {
@@ -221,7 +180,7 @@ func (uc *OAuthUseCase) RefreshToken(ctx context.Context, input *RefreshTokenInp
 		idToken = *account.IDToken
 	}
 
-	return &RefreshTokenOutput{
+	return &domain.RefreshTokenOutput{
 		AccessToken:  newToken.AccessToken,
 		RefreshToken: newToken.RefreshToken,
 		IDToken:      idToken,
@@ -229,7 +188,7 @@ func (uc *OAuthUseCase) RefreshToken(ctx context.Context, input *RefreshTokenInp
 	}, nil
 }
 
-func (uc *OAuthUseCase) findOrCreateOAuthUser(ctx context.Context, providerID string, userInfo *OAuthUserInfo, tokens *OAuthTokens) (*domain.User, *domain.Account, error) {
+func (uc *OAuthUseCase) findOrCreateOAuthUser(ctx context.Context, providerID string, userInfo *domain.OAuthUserInfo, tokens *domain.OAuthTokens) (*domain.User, *domain.Account, error) {
 	// Try to find existing account
 	account, err := uc.accountRepo.FindByProviderAccountID(ctx, providerID, userInfo.ID)
 	if err == nil && account != nil {
@@ -333,7 +292,7 @@ func (p *GoogleProvider) GetAuthURL(state, redirectURI string) string {
 	return p.config.AuthCodeURL(state)
 }
 
-func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokens, error) {
+func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error) {
 	if redirectURI != "" {
 		p.config.RedirectURL = redirectURI
 	}
@@ -349,7 +308,7 @@ func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, redirectURI str
 		idToken = extra
 	}
 
-	return &OAuthTokens{
+	return &domain.OAuthTokens{
 		AccessToken:  token.AccessToken,
 		RefreshToken: refreshToken,
 		IDToken:      idToken,
@@ -358,7 +317,7 @@ func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, redirectURI str
 	}, nil
 }
 
-func (p *GoogleProvider) GetUserInfo(ctx context.Context, accessToken string) (*OAuthUserInfo, error) {
+func (p *GoogleProvider) GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
 	if err != nil {
 		return nil, err
@@ -390,7 +349,7 @@ func (p *GoogleProvider) GetUserInfo(ctx context.Context, accessToken string) (*
 		return nil, err
 	}
 
-	return &OAuthUserInfo{
+	return &domain.OAuthUserInfo{
 		ID:            data.ID,
 		Email:         data.Email,
 		Name:          data.Name,
@@ -430,7 +389,7 @@ func (p *GitHubProvider) GetAuthURL(state, redirectURI string) string {
 	return p.config.AuthCodeURL(state)
 }
 
-func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokens, error) {
+func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error) {
 	if redirectURI != "" {
 		p.config.RedirectURL = redirectURI
 	}
@@ -440,7 +399,7 @@ func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, redirectURI str
 		return nil, err
 	}
 
-	return &OAuthTokens{
+	return &domain.OAuthTokens{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 		ExpiresIn:    int64(time.Until(token.Expiry).Seconds()),
@@ -448,7 +407,7 @@ func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, redirectURI str
 	}, nil
 }
 
-func (p *GitHubProvider) GetUserInfo(ctx context.Context, accessToken string) (*OAuthUserInfo, error) {
+func (p *GitHubProvider) GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error) {
 	// Get user info
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user", nil)
 	if err != nil {
@@ -526,7 +485,7 @@ func (p *GitHubProvider) GetUserInfo(ctx context.Context, accessToken string) (*
 		name = userData.Login
 	}
 
-	return &OAuthUserInfo{
+	return &domain.OAuthUserInfo{
 		ID:            fmt.Sprintf("%d", userData.ID),
 		Email:         email,
 		Name:          name,
@@ -566,7 +525,7 @@ func (p *DiscordProvider) GetAuthURL(state, redirectURI string) string {
 	return p.config.AuthCodeURL(state)
 }
 
-func (p *DiscordProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokens, error) {
+func (p *DiscordProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error) {
 	if redirectURI != "" {
 		p.config.RedirectURL = redirectURI
 	}
@@ -576,7 +535,7 @@ func (p *DiscordProvider) ExchangeCode(ctx context.Context, code, redirectURI st
 		return nil, err
 	}
 
-	return &OAuthTokens{
+	return &domain.OAuthTokens{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 		ExpiresIn:    int64(time.Until(token.Expiry).Seconds()),
@@ -584,7 +543,7 @@ func (p *DiscordProvider) ExchangeCode(ctx context.Context, code, redirectURI st
 	}, nil
 }
 
-func (p *DiscordProvider) GetUserInfo(ctx context.Context, accessToken string) (*OAuthUserInfo, error) {
+func (p *DiscordProvider) GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", "https://discord.com/api/users/@me", nil)
 	if err != nil {
 		return nil, err
@@ -621,7 +580,7 @@ func (p *DiscordProvider) GetUserInfo(ctx context.Context, accessToken string) (
 		avatarURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", data.ID, data.Avatar)
 	}
 
-	return &OAuthUserInfo{
+	return &domain.OAuthUserInfo{
 		ID:            data.ID,
 		Email:         data.Email,
 		Name:          data.Username,
@@ -635,13 +594,13 @@ type GenericOAuthProvider struct {
 	providerID     string
 	config         *oauth2.Config
 	userInfoURL    string
-	userInfoMapper func(map[string]interface{}) *OAuthUserInfo
+	userInfoMapper func(map[string]any) *domain.OAuthUserInfo
 }
 
 func NewGenericOAuthProvider(
 	providerID, clientID, clientSecret, redirectURL, authURL, tokenURL, userInfoURL string,
 	scopes []string,
-	userInfoMapper func(map[string]interface{}) *OAuthUserInfo,
+	userInfoMapper func(map[string]any) *domain.OAuthUserInfo,
 ) *GenericOAuthProvider {
 	return &GenericOAuthProvider{
 		providerID: providerID,
@@ -672,7 +631,7 @@ func (p *GenericOAuthProvider) GetAuthURL(state, redirectURI string) string {
 	return p.config.AuthCodeURL(state, opts...)
 }
 
-func (p *GenericOAuthProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokens, error) {
+func (p *GenericOAuthProvider) ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error) {
 	if redirectURI != "" {
 		p.config.RedirectURL = redirectURI
 	}
@@ -682,7 +641,7 @@ func (p *GenericOAuthProvider) ExchangeCode(ctx context.Context, code, redirectU
 		return nil, err
 	}
 
-	return &OAuthTokens{
+	return &domain.OAuthTokens{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 		ExpiresIn:    int64(time.Until(token.Expiry).Seconds()),
@@ -690,7 +649,7 @@ func (p *GenericOAuthProvider) ExchangeCode(ctx context.Context, code, redirectU
 	}, nil
 }
 
-func (p *GenericOAuthProvider) GetUserInfo(ctx context.Context, accessToken string) (*OAuthUserInfo, error) {
+func (p *GenericOAuthProvider) GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error) {
 	parsedURL, err := url.Parse(p.userInfoURL)
 	if err != nil {
 		return nil, err
@@ -715,7 +674,7 @@ func (p *GenericOAuthProvider) GetUserInfo(ctx context.Context, accessToken stri
 		return nil, fmt.Errorf("failed to get user info: %s", body)
 	}
 
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
@@ -725,7 +684,7 @@ func (p *GenericOAuthProvider) GetUserInfo(ctx context.Context, accessToken stri
 	}
 
 	// Default mapping
-	return &OAuthUserInfo{
+	return &domain.OAuthUserInfo{
 		ID:            getStringField(data, "id", "sub"),
 		Email:         getStringField(data, "email"),
 		Name:          getStringField(data, "name", "username"),
@@ -734,7 +693,7 @@ func (p *GenericOAuthProvider) GetUserInfo(ctx context.Context, accessToken stri
 	}, nil
 }
 
-func getStringField(data map[string]interface{}, keys ...string) string {
+func getStringField(data map[string]any, keys ...string) string {
 	for _, key := range keys {
 		if val, ok := data[key]; ok {
 			if str, ok := val.(string); ok {
@@ -745,7 +704,7 @@ func getStringField(data map[string]interface{}, keys ...string) string {
 	return ""
 }
 
-func getBoolField(data map[string]interface{}, keys ...string) bool {
+func getBoolField(data map[string]any, keys ...string) bool {
 	for _, key := range keys {
 		if val, ok := data[key]; ok {
 			if b, ok := val.(bool); ok {

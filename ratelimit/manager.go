@@ -91,7 +91,7 @@ func (r *RedisRateLimiter) Allow(key string, limit int64, window time.Duration) 
 	}
 
 	// Parse result
-	vals := result.([]interface{})
+	vals := result.([]any)
 	allowed := vals[0].(int64) == 1
 	retryAfter := int(vals[1].(int64))
 

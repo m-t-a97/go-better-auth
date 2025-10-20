@@ -270,7 +270,7 @@ func loginHandler(authUseCase *usecase.AuthUseCase, manager *sessionauth.Manager
         // Set session cookie
         manager.SetSessionCookie(w, output.Session.Token, output.Session.ExpiresAt)
         
-        json.NewEncoder(w).Encode(map[string]interface{}{
+        json.NewEncoder(w).Encode(map[string]any{
             "user": output.User,
         })
     }
@@ -291,7 +291,7 @@ func logoutHandler(manager *sessionauth.Manager) http.HandlerFunc {
 func profileHandler(w http.ResponseWriter, r *http.Request) {
     user := sessionauth.MustGetUser(r)
     
-    json.NewEncoder(w).Encode(map[string]interface{}{
+    json.NewEncoder(w).Encode(map[string]any{
         "user": user,
     })
 }

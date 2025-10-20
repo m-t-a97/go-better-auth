@@ -204,8 +204,8 @@ func TestNew_WithGenericOAuthProvider(t *testing.T) {
 					TokenURL:     "https://example.com/oauth/token",
 					UserInfoURL:  "https://example.com/oauth/userinfo",
 					Scopes:       []string{"openid", "profile", "email"},
-					UserInfoMapper: func(data map[string]interface{}) *usecase.OAuthUserInfo {
-						return &usecase.OAuthUserInfo{
+					UserInfoMapper: func(data map[string]any) *domain.OAuthUserInfo {
+						return &domain.OAuthUserInfo{
 							ID:    "123",
 							Email: "test@example.com",
 							Name:  "Test User",

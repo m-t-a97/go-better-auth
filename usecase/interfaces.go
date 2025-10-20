@@ -43,3 +43,23 @@ type VerificationRepository interface {
 	Delete(ctx context.Context, id string) error
 	DeleteExpired(ctx context.Context) error
 }
+
+// PasswordHasher defines the interface for password hashing
+type PasswordHasher interface {
+	Hash(password string) (string, error)
+	Verify(password, hash string) bool
+}
+
+// EmailSender defines the interface for sending emails
+type EmailSender interface {
+	SendVerificationEmail(ctx context.Context, email, token, url string) error
+	SendPasswordResetEmail(ctx context.Context, email, token, url string) error
+}
+
+// OAuthProvider defines the interface for OAuth providers
+type OAuthProvider interface {
+	GetAuthURL(state, redirectURI string) string
+	ExchangeCode(ctx context.Context, code, redirectURI string) (*domain.OAuthTokens, error)
+	GetUserInfo(ctx context.Context, accessToken string) (*domain.OAuthUserInfo, error)
+	GetProviderID() string
+}

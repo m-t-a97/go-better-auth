@@ -246,7 +246,7 @@ func TestSignUpEmail(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -257,7 +257,7 @@ func TestSignUpEmail(t *testing.T) {
 	// Test successful signup
 	t.Run("successful signup", func(t *testing.T) {
 		ctx := context.Background()
-		input := &usecase.SignUpEmailInput{
+		input := &domain.SignUpEmailInput{
 			Email:    "test@example.com",
 			Password: "SecurePass123!",
 			Name:     "Test User",
@@ -280,7 +280,7 @@ func TestSignUpEmail(t *testing.T) {
 	// Test duplicate email
 	t.Run("duplicate email", func(t *testing.T) {
 		ctx := context.Background()
-		input := &usecase.SignUpEmailInput{
+		input := &domain.SignUpEmailInput{
 			Email:    "test@example.com",
 			Password: "SecurePass123!",
 			Name:     "Test User 2",
@@ -308,7 +308,7 @@ func TestSignInEmail(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -318,7 +318,7 @@ func TestSignInEmail(t *testing.T) {
 
 	// Create a user first
 	ctx := context.Background()
-	signupInput := &usecase.SignUpEmailInput{
+	signupInput := &domain.SignUpEmailInput{
 		Email:    "signin@example.com",
 		Password: "SecurePass123!",
 		Name:     "Sign In User",
@@ -410,7 +410,7 @@ func TestSessionManagement(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -420,7 +420,7 @@ func TestSessionManagement(t *testing.T) {
 
 	// Create user and session
 	ctx := context.Background()
-	signupInput := &usecase.SignUpEmailInput{
+	signupInput := &domain.SignUpEmailInput{
 		Email:    "session@example.com",
 		Password: "SecurePass123!",
 		Name:     "Session User",
@@ -469,7 +469,7 @@ func TestRefreshSession(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         24 * time.Hour,
 			RequireEmailVerification: false,
@@ -507,7 +507,7 @@ func TestRefreshSession(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Refresh session
-	output, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+	output, err := authUseCase.RefreshSession(ctx, &domain.RefreshSessionInput{
 		Token: session.Token,
 	})
 
@@ -549,7 +549,7 @@ func TestRefreshExpiredSession(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         24 * time.Hour,
 			RequireEmailVerification: false,
@@ -581,7 +581,7 @@ func TestRefreshExpiredSession(t *testing.T) {
 	sessionRepo.Create(ctx, session)
 
 	// Try to refresh expired session
-	_, err := authUseCase.RefreshSession(ctx, &usecase.RefreshSessionInput{
+	_, err := authUseCase.RefreshSession(ctx, &domain.RefreshSessionInput{
 		Token: session.Token,
 	})
 
@@ -604,7 +604,7 @@ func TestCleanExpiredSessions(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         24 * time.Hour,
 			RequireEmailVerification: false,
@@ -683,7 +683,7 @@ func TestPasswordPolicyValidation(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -738,7 +738,7 @@ func TestPasswordPolicyValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			input := &usecase.SignUpEmailInput{
+			input := &domain.SignUpEmailInput{
 				Email:    "test-" + tc.name + "@example.com",
 				Password: tc.password,
 				Name:     "Test User",
@@ -779,7 +779,7 @@ func TestSignUpEmailDuplicateEmail(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -792,7 +792,7 @@ func TestSignUpEmailDuplicateEmail(t *testing.T) {
 	password := "SecurePass123!"
 
 	// First signup should succeed
-	_, err := authUseCase.SignUpEmail(ctx, &usecase.SignUpEmailInput{
+	_, err := authUseCase.SignUpEmail(ctx, &domain.SignUpEmailInput{
 		Email:    email,
 		Password: password,
 		Name:     "First User",
@@ -802,7 +802,7 @@ func TestSignUpEmailDuplicateEmail(t *testing.T) {
 	}
 
 	// Second signup with same email should fail
-	_, err = authUseCase.SignUpEmail(ctx, &usecase.SignUpEmailInput{
+	_, err = authUseCase.SignUpEmail(ctx, &domain.SignUpEmailInput{
 		Email:    email,
 		Password: password,
 		Name:     "Second User",
@@ -827,7 +827,7 @@ func TestChangePasswordWithValidation(t *testing.T) {
 		verificationRepo,
 		passwordHasher,
 		nil,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  "http://localhost:3000",
 			SessionExpiresIn:         7 * 24 * time.Hour,
 			RequireEmailVerification: false,
@@ -838,7 +838,7 @@ func TestChangePasswordWithValidation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a user
-	input := &usecase.SignUpEmailInput{
+	input := &domain.SignUpEmailInput{
 		Email:    "changepass@example.com",
 		Password: "SecurePass123!",
 		Name:     "Test User",

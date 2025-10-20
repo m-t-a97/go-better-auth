@@ -97,7 +97,7 @@ type GenericOAuthConfig struct {
 	TokenURL       string
 	UserInfoURL    string
 	Scopes         []string
-	UserInfoMapper func(map[string]interface{}) *usecase.OAuthUserInfo
+	UserInfoMapper func(map[string]any) *domain.OAuthUserInfo
 }
 
 // AdvancedConfig holds advanced configuration options
@@ -252,7 +252,7 @@ func New(config *Config) (*GoBetterAuth, error) {
 		verificationRepo,
 		passwordHasher,
 		emailSender,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:                  config.BaseURL,
 			SessionExpiresIn:         config.Session.ExpiresIn,
 			VerificationTokenExpiry:  24 * time.Hour,
@@ -266,7 +266,7 @@ func New(config *Config) (*GoBetterAuth, error) {
 		userRepo,
 		accountRepo,
 		sessionRepo,
-		&usecase.AuthConfig{
+		&domain.AuthConfig{
 			BaseURL:          config.BaseURL,
 			SessionExpiresIn: config.Session.ExpiresIn,
 		},

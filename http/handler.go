@@ -120,7 +120,7 @@ func (h *AuthHandler) signUpEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := h.authUseCase.SignUpEmail(r.Context(), &usecase.SignUpEmailInput{
+	output, err := h.authUseCase.SignUpEmail(r.Context(), &domain.SignUpEmailInput{
 		Email:    req.Email,
 		Password: req.Password,
 		Name:     req.Name,
@@ -191,7 +191,7 @@ func (h *AuthHandler) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"user":    user,
 		"session": session,
 	})
@@ -391,7 +391,7 @@ func (h *AuthHandler) handleError(w http.ResponseWriter, err error) {
 }
 
 // writeJSON writes a JSON response
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
 }
@@ -399,7 +399,7 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 // writeError writes an error JSON response
 func writeError(w http.ResponseWriter, status int, message string, code string) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"error": map[string]string{
 			"code":    code,
 			"message": message,

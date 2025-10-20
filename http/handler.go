@@ -41,28 +41,19 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers
 	w.Header().Set("Content-Type", "application/json")
 
-	// Parse the request path relative to the root
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	// Expect at least ["auth", "{endpoint}", ...]
-	if len(parts) < 1 {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
+	// Extract the endpoint name from the URL path
+	// Assumes "/auth" is already stripped by the router
+	endpoint := strings.TrimPrefix(r.URL.Path, "/")
+	parts := strings.Split(endpoint, "/")
 
-	// If the first segment isn't "auth", default to /auth/{endpoint}
-	if parts[0] != "auth" {
-		// e.g. /sign-up -> /auth/sign-up
-		parts = append([]string{"auth"}, parts...)
-	}
-
-	// Now require at least ["auth","{endpoint}"]
-	if len(parts) < 2 {
+	// Now require at least ["{endpoint}"]
+	if len(parts) < 1 || parts[0] == "" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
 	method := strings.ToUpper(r.Method)
-	endpoint := strings.TrimSpace(parts[1])
+	endpoint = strings.TrimSpace(parts[0])
 
 	// Route to appropriate handler
 	switch method {

@@ -46,7 +46,7 @@ func SetupChiServer(auth *gobetterauth.GoBetterAuth) *chi.Mux {
 // 		BaseURL: "http://localhost:8080",
 // 		Database: gobetterauth.DatabaseConfig{
 // 			Provider:         "postgres",
-// 			ConnectionString: "postgres://user:password@localhost:5432/betterauth",
+// 			ConnectionString: "postgres://user:password@localhost:5432/gobetterauth",
 // 		},
 // 		Session: gobetterauth.SessionConfig{
 // 			ExpiresIn:    7 * 24 * time.Hour,

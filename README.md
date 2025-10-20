@@ -20,7 +20,7 @@ A comprehensive, framework-agnostic authentication and authorization library for
 ### Installation
 
 ```bash
-go get github.com/better-auth/go-better-auth
+go get github.com/m-t-a97/go-better-auth
 ```
 
 ### Basic Usage
@@ -33,7 +33,7 @@ import (
     "net/http"
     "time"
     
-    "github.com/better-auth/go-better-auth/pkg/betterauth"
+    "github.com/m-t-a97/go-better-auth/pkg/gobetterauth"
 )
 
 func main() {
@@ -90,8 +90,8 @@ func main() {
 #### Email & Password
 
 ```go
-config := &betterauth.Config{
-    EmailAndPassword: betterauth.EmailPasswordConfig{
+config := &gobetterauth.Config{
+    EmailAndPassword: gobetterauth.EmailPasswordConfig{
         Enabled:                  true,
         RequireEmailVerification: false,
         AutoSignIn:               true,
@@ -125,13 +125,13 @@ Supported providers:
 - **Generic OAuth2** - Extensible for any provider
 
 ```go
-SocialProviders: betterauth.SocialProvidersConfig{
-    Google: &betterauth.GoogleProviderConfig{
+SocialProviders: gobetterauth.SocialProvidersConfig{
+    Google: &gobetterauth.GoogleProviderConfig{
         ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
         ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
         RedirectURL:  "http://localhost:3000/api/auth/oauth/google/callback",
     },
-    GitHub: &betterauth.GitHubProviderConfig{
+    GitHub: &gobetterauth.GitHubProviderConfig{
         ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
         ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
         RedirectURL:  "http://localhost:3000/api/auth/oauth/github/callback",
@@ -164,7 +164,7 @@ err = auth.AuthUseCase().SignOut(ctx, token)
 ### Email Verification
 
 ```go
-EmailAndPassword: betterauth.EmailPasswordConfig{
+EmailAndPassword: gobetterauth.EmailPasswordConfig{
     RequireEmailVerification: true,
     SendVerificationEmail: func(email, token, url string) error {
         // Send email with verification link
@@ -186,7 +186,7 @@ GET /api/auth/verify-email?token=verification-token
 ### Password Reset
 
 ```go
-EmailAndPassword: betterauth.EmailPasswordConfig{
+EmailAndPassword: gobetterauth.EmailPasswordConfig{
     SendPasswordResetEmail: func(email, token, url string) error {
         // Send password reset email
         return sendEmail(email, "Reset your password", url)
@@ -229,8 +229,8 @@ go-better-auth/
 │       └── postgres/
 │           └── adapter.go
 └── pkg/                     # Public packages
-    ├── betterauth/          # Main library interface
-    │   └── betterauth.go
+    ├── gobetterauth/          # Main library interface
+    │   └── gobetterauth.go
     └── plugin/              # Plugin system
         └── plugin.go
 ```
@@ -257,7 +257,7 @@ go-better-auth/
    - External service integrations
 
 5. **Public API** (`pkg/`)
-   - BetterAuth configuration and builder
+   - GoBetterAuth configuration and builder
    - Plugin system interface
 
 ## 🔌 Plugin System
@@ -269,7 +269,7 @@ package main
 
 import (
     "net/http"
-    "github.com/better-auth/go-better-auth/pkg/plugin"
+    "github.com/m-t-a97/go-better-auth/pkg/plugin"
 )
 
 type CustomPlugin struct {
@@ -301,7 +301,7 @@ func (p *CustomPlugin) handleCustomAction(w http.ResponseWriter, r *http.Request
 ### PostgreSQL
 
 ```go
-Database: betterauth.DatabaseConfig{
+Database: gobetterauth.DatabaseConfig{
     Provider:         "postgres",
     ConnectionString: "postgres://user:password@localhost/dbname?sslmode=disable",
 }
@@ -309,190 +309,11 @@ Database: betterauth.DatabaseConfig{
 
 **Schema Migration:**
 
-```sql
-CREATE TABLE users (
-    id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    image TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE sessions (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    token VARCHAR(512) UNIQUE NOT NULL,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE accounts (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    account_id VARCHAR(255) NOT NULL,
-    provider_id VARCHAR(255) NOT NULL,
-    access_token TEXT,
-    refresh_token TEXT,
-    id_token TEXT,
-    access_token_expires_at TIMESTAMP,
-    refresh_token_expires_at TIMESTAMP,
-    scope TEXT,
-    password TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE(provider_id, account_id)
-);
-
-CREATE TABLE verifications (
-    id VARCHAR(255) PRIMARY KEY,
-    identifier VARCHAR(255) NOT NULL,
-    value VARCHAR(512) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL
-);
-```
-
-### Custom Database Adapter
-
-Implement the repository interfaces:
-
-```go
-type CustomUserRepository struct {
-    // Your implementation
-}
-
-func (r *CustomUserRepository) Create(ctx context.Context, user *domain.User) error {
-    // Implementation
-}
-
-// Implement other methods...
-```
-
-## 🔒 Security Features
-
-### Password Hashing
-
-Uses **scrypt** by default (OWASP recommended):
-
-```go
-Advanced: betterauth.AdvancedConfig{
-    PasswordHasher: usecase.NewScryptPasswordHasher(),
-}
-```
-
-### Custom Password Hasher
-
-```go
-type CustomHasher struct{}
-
-func (h *CustomHasher) Hash(password string) (string, error) {
-    // Custom hashing logic
-}
-
-func (h *CustomHasher) Verify(password, hash string) bool {
-    // Custom verification logic
-}
-
-config.Advanced.PasswordHasher = &CustomHasher{}
-```
-
-### Secure Cookies
-
-```go
-Advanced: betterauth.AdvancedConfig{
-    SecureCookies: true,  // HTTPS only
-    TrustedOrigins: []string{"https://yourdomain.com"},
-}
-```
+You can find the files in `migrations/` folder.
 
 ### CSRF Protection
 
 Automatic CSRF token validation for state-changing operations.
-
-## 📖 API Reference
-
-### Authentication Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/sign-up/email` | Register new user |
-| POST | `/api/auth/sign-in/email` | Sign in with email |
-| POST | `/api/auth/sign-out` | Sign out current session |
-| GET | `/api/auth/session` | Get current session |
-| POST | `/api/auth/send-verification-email` | Send verification email |
-| GET | `/api/auth/verify-email` | Verify email address |
-| POST | `/api/auth/request-password-reset` | Request password reset |
-| POST | `/api/auth/reset-password` | Reset password with token |
-| POST | `/api/auth/change-password` | Change password (authenticated) |
-
-### OAuth Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/auth/oauth/{provider}` | Initiate OAuth flow |
-| GET | `/api/auth/oauth/{provider}/callback` | OAuth callback handler |
-
-### Request/Response Examples
-
-**Sign Up:**
-```json
-POST /api/auth/sign-up/email
-{
-  "email": "user@example.com",
-  "password": "secure123",
-  "name": "John Doe",
-  "image": "https://example.com/avatar.jpg"
-}
-
-Response:
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Doe",
-    "emailVerified": false
-  },
-  "session": {
-    "id": "session-uuid",
-    "token": "session-token",
-    "expiresAt": "2024-01-01T00:00:00Z"
-  }
-}
-```
-
-## 🧪 Testing
-
-```go
-package main_test
-
-import (
-    "testing"
-    "github.com/better-auth/go-better-auth/pkg/betterauth"
-)
-
-func TestAuth(t *testing.T) {
-    config := &betterauth.Config{
-        Database: betterauth.DatabaseConfig{
-            Provider:         "sqlite",
-            ConnectionString: ":memory:",
-        },
-    }
-    
-    auth, err := betterauth.New(config)
-    if err != nil {
-        t.Fatal(err)
-    }
-    
-    // Test authentication flows
-}
-```
 
 ## 🌟 Examples
 
@@ -516,15 +337,9 @@ Contributions are welcome! Please follow these guidelines:
 
 MIT License - see LICENSE file for details
 
-## 🙏 Acknowledgments
-
-Inspired by [Better Auth](https://better-auth.com) - The TypeScript authentication framework
-
 ## 📞 Support
 
-- GitHub Issues: [Report bugs or request features](https://github.com/better-auth/go-better-auth/issues)
-- Documentation: [Full documentation](https://github.com/better-auth/go-better-auth/wiki)
+- GitHub Issues: [Report bugs or request features](https://github.com/m-t-a97/go-better-auth/issues)
+- Documentation: [Full documentation](https://github.com/m-t-a97/go-better-auth/wiki)
 
 ---
-
-Built with ❤️ using Go and Clean Architecture principles

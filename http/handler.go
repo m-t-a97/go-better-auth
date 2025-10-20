@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -42,15 +41,13 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Set CORS headers
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract the endpoint name from the URL path
-	// Handle both cases: with or without "/auth" prefix
-	endpoint := r.URL.Path
-	fmt.Printf("Endpoint: %s\n", endpoint)
-	endpoint = strings.TrimPrefix(endpoint, "/auth")
-	endpoint = strings.TrimPrefix(endpoint, "/")
-	endpoint = strings.TrimSuffix(endpoint, "/")
-
-	if endpoint == "" {
+	// Extract the endpoint name from the URL path by splitting on /auth/
+	path := r.URL.Path
+	parts := strings.SplitN(path, "/auth/", 2)
+	var endpoint string
+	if len(parts) == 2 {
+		endpoint = strings.Trim(parts[1], "/")
+	} else {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}

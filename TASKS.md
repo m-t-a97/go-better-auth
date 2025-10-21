@@ -17,7 +17,7 @@
 ### 1.3 Secret Management
 - [x] Implement secret validation (required in production)
 - [x] Add secure secret generation utilities
-- [ ] Create encryption/signing utilities using the secret
+- [x] Create encryption/signing utilities using the secret
 
 ## 2. Database Layer
 

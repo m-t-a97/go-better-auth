@@ -20,6 +20,7 @@ type Auth struct {
 	config          *domain.Config
 	secretGenerator *crypto.SecretGenerator
 	passwordHasher  *crypto.PasswordHasher
+	cipherManager   *crypto.CipherManager
 	adapter         adapter.Adapter
 }
 
@@ -38,6 +39,16 @@ func New(config *domain.Config) (*Auth, error) {
 		return nil, fmt.Errorf("invalid configuration: %s", validationResult.Error())
 	}
 
+	// Initialize CipherManager from the secret
+	var cipherManager *crypto.CipherManager
+	if config.Secret != "" {
+		cm, err := crypto.NewCipherManager(config.Secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create cipher manager: %w", err)
+		}
+		cipherManager = cm
+	}
+
 	// Create database adapter
 	dbAdapter, err := createAdapter(config)
 	if err != nil {
@@ -49,6 +60,7 @@ func New(config *domain.Config) (*Auth, error) {
 		config:          config,
 		secretGenerator: crypto.NewSecretGenerator(),
 		passwordHasher:  crypto.NewPasswordHasher(),
+		cipherManager:   cipherManager,
 		adapter:         dbAdapter,
 	}
 
@@ -91,6 +103,11 @@ func (a *Auth) SecretGenerator() *crypto.SecretGenerator {
 // PasswordHasher returns the password hasher
 func (a *Auth) PasswordHasher() *crypto.PasswordHasher {
 	return a.passwordHasher
+}
+
+// CipherManager returns the cipher manager for encryption and signing
+func (a *Auth) CipherManager() *crypto.CipherManager {
+	return a.cipherManager
 }
 
 // Handler returns an http.Handler that implements all authentication endpoints.

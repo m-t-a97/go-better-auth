@@ -163,7 +163,6 @@ type SocialProvidersConfig struct {
 	Google  *GoogleProviderConfig
 	GitHub  *GitHubProviderConfig
 	Discord *DiscordProviderConfig
-	Generic map[string]*GenericOAuthConfig
 }
 
 // GoogleProviderConfig holds Google OAuth configuration
@@ -185,18 +184,6 @@ type DiscordProviderConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
-}
-
-// GenericOAuthConfig holds generic OAuth provider configuration
-type GenericOAuthConfig struct {
-	ClientID       string
-	ClientSecret   string
-	RedirectURI    string
-	AuthURL        string
-	TokenURL       string
-	UserInfoURL    string
-	Scopes         []string
-	UserInfoMapper func(map[string]any) *OAuthUserInfo
 }
 
 // Plugin defines the interface for Go Better Auth plugins

@@ -58,19 +58,4 @@ var (
 		Message: "Resource not found",
 		Status:  404,
 	}
-	ErrMFANotEnabled = &AuthError{
-		Code:    "mfa_not_enabled",
-		Message: "Two-factor authentication is not enabled",
-		Status:  400,
-	}
-	ErrInvalidMFACode = &AuthError{
-		Code:    "invalid_mfa_code",
-		Message: "Invalid or expired MFA code",
-		Status:  401,
-	}
-	ErrMFARequired = &AuthError{
-		Code:    "mfa_required",
-		Message: "Two-factor authentication code required",
-		Status:  403,
-	}
 )

@@ -109,16 +109,16 @@
 ## 7. Social Authentication Providers
 
 ### 7.1 OAuth Handlers
-- [ ] Implement Google OAuth provider
-- [ ] Implement GitHub OAuth provider
-- [ ] Implement Discord OAuth provider
-- [ ] Add extensible provider interface for custom providers
+- [x] Implement Google OAuth provider
+- [x] Implement GitHub OAuth provider
+- [x] Implement Discord OAuth provider
+- [x] Add extensible provider interface for custom providers
 
 ### 7.2 OAuth Flow
-- [ ] Create OAuth authorization URL generation
-- [ ] Implement OAuth callback handling
-- [ ] Add state parameter validation for CSRF protection
-- [ ] Handle OAuth token exchange and user creation
+- [x] Create OAuth authorization URL generation
+- [x] Implement OAuth callback handling
+- [x] Add state parameter validation for CSRF protection
+- [x] Handle OAuth token exchange and user creation
 
 ## 8. Email Verification System
 
@@ -141,16 +141,16 @@
 ## 9. Rate Limiting
 
 ### 9.1 Rate Limit Engine
-- [ ] Implement in-memory rate limiting
-- [ ] Add database-backed rate limiting
+- [x] Implement in-memory rate limiting
+- [x] Add database-backed rate limiting
 - [ ] Create sliding window algorithm
-- [ ] Add custom rules support
+- [x] Add custom rules support
 
 ### 9.2 Middleware
-- [ ] Create rate limiting HTTP middleware
-- [ ] Add IP-based tracking
-- [ ] Implement request throttling
-- [ ] Add rate limit headers to responses
+- [x] Create rate limiting HTTP middleware
+- [x] Add IP-based tracking
+- [x] Implement request throttling
+- [x] Add rate limit headers to responses
 
 ## 10. Security & Advanced Features
 
@@ -218,15 +218,15 @@
 
 ### 14.1 Core Handlers
 - [x] Implement authentication endpoints (/sign-in, /sign-up, /sign-out)
-- [ ] Add OAuth provider endpoints
+- [x] Add OAuth provider endpoints
 - [x] Create verification endpoints
 - [x] Implement session management endpoints
 
 ### 14.2 Middleware Stack
 - [x] Create authentication middleware (with optional auth variant)
 - [x] Add context utilities for user ID and token extraction
-- [ ] Add CORS middleware
-- [ ] Implement rate limiting middleware
+- [x] Add CORS middleware
+- [x] Implement rate limiting middleware
 - [ ] Add logging middleware
 
 ### 14.3 API Design

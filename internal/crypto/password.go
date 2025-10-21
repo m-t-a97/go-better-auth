@@ -8,21 +8,21 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// PasswordHasher provides utilities for hashing and verifying passwords using Argon2
-type PasswordHasher struct {
+// Argon2PasswordHasher provides utilities for hashing and verifying passwords using Argon2
+type Argon2PasswordHasher struct {
 	time    uint32
 	memory  uint32
 	threads uint8
 	keyLen  uint32
 }
 
-// NewPasswordHasher creates a new password hasher with secure defaults
+// NewArgon2PasswordHasher creates a new password hasher with secure defaults
 // Time: 1 iteration (recommended minimum is 1-4)
 // Memory: 64 MB
 // Threads: 4 (number of parallel threads)
 // KeyLen: 32 bytes
-func NewPasswordHasher() *PasswordHasher {
-	return &PasswordHasher{
+func NewArgon2PasswordHasher() *Argon2PasswordHasher {
+	return &Argon2PasswordHasher{
 		time:    1,
 		memory:  64 * 1024, // 64 MB in KiB
 		threads: 4,
@@ -30,9 +30,9 @@ func NewPasswordHasher() *PasswordHasher {
 	}
 }
 
-// NewPasswordHasherCustom creates a password hasher with custom parameters
-func NewPasswordHasherCustom(time, memory uint32, threads uint8, keyLen uint32) *PasswordHasher {
-	return &PasswordHasher{
+// NewArgon2PasswordHasherCustom creates a password hasher with custom parameters
+func NewArgon2PasswordHasherCustom(time, memory uint32, threads uint8, keyLen uint32) *Argon2PasswordHasher {
+	return &Argon2PasswordHasher{
 		time:    time,
 		memory:  memory,
 		threads: threads,
@@ -41,7 +41,7 @@ func NewPasswordHasherCustom(time, memory uint32, threads uint8, keyLen uint32) 
 }
 
 // Hash hashes a password using Argon2id and returns a base64-encoded hash
-func (ph *PasswordHasher) Hash(password string) (string, error) {
+func (ph *Argon2PasswordHasher) Hash(password string) (string, error) {
 	if password == "" {
 		return "", fmt.Errorf("password cannot be empty")
 	}
@@ -78,7 +78,7 @@ func (ph *PasswordHasher) Hash(password string) (string, error) {
 }
 
 // Verify verifies a password against a hash
-func (ph *PasswordHasher) Verify(password, hash string) (bool, error) {
+func (ph *Argon2PasswordHasher) Verify(password, hash string) (bool, error) {
 	if password == "" || hash == "" {
 		return false, fmt.Errorf("password and hash cannot be empty")
 	}
@@ -186,12 +186,12 @@ func base64URLDecode(s string) ([]byte, error) {
 
 // HashPassword is a convenience function to hash a password using the default hasher
 func HashPassword(password string) (string, error) {
-	hasher := NewPasswordHasher()
+	hasher := NewArgon2PasswordHasher()
 	return hasher.Hash(password)
 }
 
 // VerifyPassword is a convenience function to verify a password using the default hasher
 func VerifyPassword(password, hash string) (bool, error) {
-	hasher := NewPasswordHasher()
+	hasher := NewArgon2PasswordHasher()
 	return hasher.Verify(password, hash)
 }

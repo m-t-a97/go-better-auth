@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
@@ -255,7 +256,7 @@ func TestResetPassword_Valid(t *testing.T) {
 	verificationRepo.Create(v)
 
 	service := NewService(
-		createTestConfig(),userRepo, memory.NewSessionRepository(), accountRepo, verificationRepo)
+		createTestConfig(), userRepo, memory.NewSessionRepository(), accountRepo, verificationRepo)
 
 	req := &ResetPasswordRequest{
 		ResetToken:  resetToken,
@@ -378,7 +379,7 @@ func TestVerifyEmail_Valid(t *testing.T) {
 	verificationRepo.Create(v)
 
 	service := NewService(
-		createTestConfig(),userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), verificationRepo)
+		createTestConfig(), userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), verificationRepo)
 
 	req := &VerifyEmailRequest{
 		VerificationToken: verificationToken,
@@ -496,5 +497,143 @@ func TestGetProfile_NotFound(t *testing.T) {
 	_, err := service.GetProfile(req)
 	if err == nil {
 		t.Fatal("Expected error for non-existent user")
+	}
+}
+
+func TestPasswordHasher_Default(t *testing.T) {
+	service := NewService(
+		createTestConfig(),
+		memory.NewUserRepository(),
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		memory.NewVerificationRepository(),
+	)
+
+	// Test that default password hasher is used
+	password := "test-password-123"
+	hash, err := service.passwordHasher.Hash(password)
+	if err != nil {
+		t.Fatalf("Failed to hash password: %v", err)
+	}
+
+	if hash == "" {
+		t.Error("Expected non-empty hash")
+	}
+
+	// Test verification
+	valid, err := service.passwordHasher.Verify(password, hash)
+	if err != nil {
+		t.Fatalf("Failed to verify password: %v", err)
+	}
+
+	if !valid {
+		t.Error("Expected password to be valid")
+	}
+
+	// Test invalid password
+	valid, err = service.passwordHasher.Verify("wrong-password", hash)
+	if err != nil {
+		t.Fatalf("Failed to verify wrong password: %v", err)
+	}
+
+	if valid {
+		t.Error("Expected wrong password to be invalid")
+	}
+}
+
+func TestPasswordHasher_Custom(t *testing.T) {
+	// Create custom hash and verify functions
+	customHash := func(password string) (string, error) {
+		return "custom-hash-" + password, nil
+	}
+
+	customVerify := func(password, hash string) bool {
+		expected := "custom-hash-" + password
+		return hash == expected
+	}
+
+	config := createTestConfig()
+	config.EmailAndPassword = &domain.EmailPasswordConfig{
+		Enabled: true,
+		Password: &domain.PasswordConfig{
+			Hash:   customHash,
+			Verify: customVerify,
+		},
+	}
+
+	service := NewService(
+		config,
+		memory.NewUserRepository(),
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		memory.NewVerificationRepository(),
+	)
+
+	// Test custom password hasher
+	password := "test-password-123"
+	hash, err := service.passwordHasher.Hash(password)
+	if err != nil {
+		t.Fatalf("Failed to hash password: %v", err)
+	}
+
+	expectedHash := "custom-hash-" + password
+	if hash != expectedHash {
+		t.Errorf("Expected hash %q, got %q", expectedHash, hash)
+	}
+
+	// Test verification
+	valid, err := service.passwordHasher.Verify(password, hash)
+	if err != nil {
+		t.Fatalf("Failed to verify password: %v", err)
+	}
+
+	if !valid {
+		t.Error("Expected password to be valid")
+	}
+
+	// Test invalid password
+	valid, err = service.passwordHasher.Verify("wrong-password", hash)
+	if err != nil {
+		t.Fatalf("Failed to verify wrong password: %v", err)
+	}
+
+	if valid {
+		t.Error("Expected wrong password to be invalid")
+	}
+}
+
+func TestPasswordHasher_CustomHashOnly(t *testing.T) {
+	// Test with only custom hash function (should fall back to default hasher)
+	customHash := func(password string) (string, error) {
+		return "custom-hash-" + password, nil
+	}
+
+	config := createTestConfig()
+	config.EmailAndPassword = &domain.EmailPasswordConfig{
+		Enabled: true,
+		Password: &domain.PasswordConfig{
+			Hash: customHash,
+			// No Verify function provided
+		},
+	}
+
+	service := NewService(
+		config,
+		memory.NewUserRepository(),
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		memory.NewVerificationRepository(),
+	)
+
+	// Should fall back to default hasher since verify is not provided
+	password := "test-password-123"
+	hash, err := service.passwordHasher.Hash(password)
+	if err != nil {
+		t.Fatalf("Failed to hash password: %v", err)
+	}
+
+	// Should be default hash, not custom
+	if hash == "custom-hash-"+password {
+		t.Error("Expected default hash, got custom hash")
 	}
 }

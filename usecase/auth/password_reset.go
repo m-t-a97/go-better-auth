@@ -122,7 +122,7 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 	}
 
 	// Hash new password
-	hashedPassword, err := crypto.HashPassword(strings.TrimSpace(req.NewPassword))
+	hashedPassword, err := s.passwordHasher.Hash(strings.TrimSpace(req.NewPassword))
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}

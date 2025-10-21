@@ -9,7 +9,6 @@ import (
 
 	"github.com/m-t-a97/go-better-auth/domain/account"
 	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // SignUpRequest contains the request data for sign up
@@ -45,7 +44,7 @@ func (s *Service) SignUp(req *SignUpRequest) (*SignUpResponse, error) {
 	}
 
 	// Hash password
-	hashedPassword, err := crypto.HashPassword(strings.TrimSpace(req.Password))
+	hashedPassword, err := s.passwordHasher.Hash(strings.TrimSpace(req.Password))
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}

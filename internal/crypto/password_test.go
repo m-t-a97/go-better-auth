@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewPasswordHasher(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 	assert.NotNil(t, ph)
 	assert.Equal(t, uint32(1), ph.time)
 	assert.Equal(t, uint32(64*1024), ph.memory)
@@ -16,7 +16,7 @@ func TestNewPasswordHasher(t *testing.T) {
 }
 
 func TestNewPasswordHasherCustom(t *testing.T) {
-	ph := NewPasswordHasherCustom(2, 128*1024, 8, 64)
+	ph := NewArgon2PasswordHasherCustom(2, 128*1024, 8, 64)
 	assert.NotNil(t, ph)
 	assert.Equal(t, uint32(2), ph.time)
 	assert.Equal(t, uint32(128*1024), ph.memory)
@@ -25,7 +25,7 @@ func TestNewPasswordHasherCustom(t *testing.T) {
 }
 
 func TestPasswordHasher_Hash_Valid(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := "my-secure-password-123"
 	hash, err := ph.Hash(password)
@@ -36,7 +36,7 @@ func TestPasswordHasher_Hash_Valid(t *testing.T) {
 }
 
 func TestPasswordHasher_Hash_Empty(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	hash, err := ph.Hash("")
 	assert.Error(t, err)
@@ -44,7 +44,7 @@ func TestPasswordHasher_Hash_Empty(t *testing.T) {
 }
 
 func TestPasswordHasher_Hash_TooLong(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := string(make([]byte, 100))
 	hash, err := ph.Hash(password)
@@ -54,7 +54,7 @@ func TestPasswordHasher_Hash_TooLong(t *testing.T) {
 }
 
 func TestPasswordHasher_Hash_Uniqueness(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := "my-password"
 	hash1, err := ph.Hash(password)
@@ -68,7 +68,7 @@ func TestPasswordHasher_Hash_Uniqueness(t *testing.T) {
 }
 
 func TestPasswordHasher_Verify_Valid(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := "my-secure-password-123"
 	hash, err := ph.Hash(password)
@@ -80,7 +80,7 @@ func TestPasswordHasher_Verify_Valid(t *testing.T) {
 }
 
 func TestPasswordHasher_Verify_Invalid(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := "my-secure-password-123"
 	hash, err := ph.Hash(password)
@@ -92,7 +92,7 @@ func TestPasswordHasher_Verify_Invalid(t *testing.T) {
 }
 
 func TestPasswordHasher_Verify_Empty(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	verified, err := ph.Verify("", "")
 	assert.Error(t, err)
@@ -100,7 +100,7 @@ func TestPasswordHasher_Verify_Empty(t *testing.T) {
 }
 
 func TestPasswordHasher_Verify_EmptyPassword(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password := "my-password"
 	hash, err := ph.Hash(password)
@@ -112,7 +112,7 @@ func TestPasswordHasher_Verify_EmptyPassword(t *testing.T) {
 }
 
 func TestPasswordHasher_Verify_InvalidHash(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	verified, err := ph.Verify("password", "invalid-hash")
 	assert.Error(t, err)
@@ -120,7 +120,7 @@ func TestPasswordHasher_Verify_InvalidHash(t *testing.T) {
 }
 
 func TestPasswordHasher_Hash_DifferentPasswords(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	password1 := "password1"
 	password2 := "password2"
@@ -153,7 +153,7 @@ func TestConstantTimeCompare(t *testing.T) {
 }
 
 func TestPasswordHasher_RealWorldScenario(t *testing.T) {
-	ph := NewPasswordHasher()
+	ph := NewArgon2PasswordHasher()
 
 	// Simulate user registration
 	password := "MySecureP@ssw0rd!"

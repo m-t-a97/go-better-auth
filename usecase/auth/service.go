@@ -6,7 +6,39 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain/session"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
+
+// PasswordHasher provides password hashing and verification functionality
+type PasswordHasher interface {
+	Hash(password string) (string, error)
+	Verify(password, hash string) (bool, error)
+}
+
+// DefaultPasswordHasher implements PasswordHasher using the default crypto functions
+type DefaultPasswordHasher struct{}
+
+func (h *DefaultPasswordHasher) Hash(password string) (string, error) {
+	return crypto.HashPassword(password)
+}
+
+func (h *DefaultPasswordHasher) Verify(password, hash string) (bool, error) {
+	return crypto.VerifyPassword(password, hash)
+}
+
+// CustomPasswordHasher implements PasswordHasher using custom functions from config
+type CustomPasswordHasher struct {
+	hashFunc   func(password string) (string, error)
+	verifyFunc func(password, hash string) bool
+}
+
+func (h *CustomPasswordHasher) Hash(password string) (string, error) {
+	return h.hashFunc(password)
+}
+
+func (h *CustomPasswordHasher) Verify(password, hash string) (bool, error) {
+	return h.verifyFunc(password, hash), nil
+}
 
 // Service provides authentication use cases
 type Service struct {
@@ -15,6 +47,7 @@ type Service struct {
 	sessionRepo      session.Repository
 	accountRepo      account.Repository
 	verificationRepo verification.Repository
+	passwordHasher   PasswordHasher
 }
 
 // NewService creates a new authentication service
@@ -25,11 +58,28 @@ func NewService(
 	accountRepo account.Repository,
 	verificationRepo verification.Repository,
 ) *Service {
+	var passwordHasher PasswordHasher
+
+	// Use custom password hasher if configured, otherwise use default
+	if config.EmailAndPassword != nil && config.EmailAndPassword.Password != nil {
+		if config.EmailAndPassword.Password.Hash != nil && config.EmailAndPassword.Password.Verify != nil {
+			passwordHasher = &CustomPasswordHasher{
+				hashFunc:   config.EmailAndPassword.Password.Hash,
+				verifyFunc: config.EmailAndPassword.Password.Verify,
+			}
+		}
+	}
+
+	if passwordHasher == nil {
+		passwordHasher = &DefaultPasswordHasher{}
+	}
+
 	return &Service{
 		config:           config,
 		userRepo:         userRepo,
 		sessionRepo:      sessionRepo,
 		accountRepo:      accountRepo,
 		verificationRepo: verificationRepo,
+		passwordHasher:   passwordHasher,
 	}
 }

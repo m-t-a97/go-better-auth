@@ -92,7 +92,7 @@
 
 ### 6.1 Password Management
 - [x] Implement secure password hashing (argon2)
-- [ ] Add custom password hashing support
+- [x] Add custom password hashing support
 - [x] Create password verification utilities
 
 ### 6.2 Authentication Flow

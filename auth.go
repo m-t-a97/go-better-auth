@@ -22,7 +22,7 @@ import (
 type Auth struct {
 	config          *domain.Config
 	secretGenerator *crypto.SecretGenerator
-	passwordHasher  *crypto.PasswordHasher
+	passwordHasher  *crypto.Argon2PasswordHasher
 	cipherManager   *crypto.CipherManager
 	adapter         adapter.Adapter
 }
@@ -62,7 +62,7 @@ func New(config *domain.Config) (*Auth, error) {
 	auth := &Auth{
 		config:          config,
 		secretGenerator: crypto.NewSecretGenerator(),
-		passwordHasher:  crypto.NewPasswordHasher(),
+		passwordHasher:  crypto.NewArgon2PasswordHasher(),
 		cipherManager:   cipherManager,
 		adapter:         dbAdapter,
 	}
@@ -116,7 +116,7 @@ func (a *Auth) SecretGenerator() *crypto.SecretGenerator {
 }
 
 // PasswordHasher returns the password hasher
-func (a *Auth) PasswordHasher() *crypto.PasswordHasher {
+func (a *Auth) PasswordHasher() *crypto.Argon2PasswordHasher {
 	return a.passwordHasher
 }
 

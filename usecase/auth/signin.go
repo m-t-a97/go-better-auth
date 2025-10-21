@@ -51,7 +51,7 @@ func (s *Service) SignIn(req *SignInRequest) (*SignInResponse, error) {
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
-	ok, err := crypto.VerifyPassword(req.Password, *acc.Password)
+	ok, err := s.passwordHasher.Verify(req.Password, *acc.Password)
 	if err != nil || !ok {
 		return nil, fmt.Errorf("invalid email or password")
 	}

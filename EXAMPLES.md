@@ -503,3 +503,190 @@ Go Better Auth applies sensible defaults:
 - **Database.Casing**: `snake`
 
 All these can be overridden in your configuration.
+
+````
+
+## HTTP Router Integration
+
+### Standard Library (net/http)
+
+```go
+package main
+
+import (
+	"log"
+	"net/http"
+
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+)
+
+func main() {
+	auth, err := gobetterauth.New(&domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "your-secret-key-here",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: "./auth.db",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Mount handler on stdlib mux
+	http.Handle("/api/auth/", auth.Handler())
+
+	log.Println("Server running on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+```
+
+### Chi Router
+
+```go
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+)
+
+func main() {
+	auth, err := gobetterauth.New(&domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "your-secret-key-here",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: "./auth.db",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r := chi.NewRouter()
+
+	// Mount auth handler on Chi router
+	r.Mount("/api/auth", http.StripPrefix("/api/auth", auth.Handler()))
+
+	log.Println("Server running on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", r))
+}
+```
+
+### Echo Router
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/labstack/echo/v4"
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+)
+
+func main() {
+	auth, err := gobetterauth.New(&domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "your-secret-key-here",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: "./auth.db",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	e := echo.New()
+
+	// Mount auth handler on Echo router
+	e.Any("/api/auth/*", echo.WrapHandler(auth.Handler()))
+
+	log.Println("Server running on http://localhost:8080")
+	log.Fatal(e.Start(":8080"))
+}
+```
+
+### Gin Router
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/gin-gonic/gin"
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+)
+
+func main() {
+	auth, err := gobetterauth.New(&domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "your-secret-key-here",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: "./auth.db",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r := gin.Default()
+
+	// Mount auth handler on Gin router
+	r.Any("/api/auth/*path", gin.WrapH(auth.Handler()))
+
+	log.Println("Server running on http://localhost:8080")
+	log.Fatal(r.Run(":8080"))
+}
+```
+
+### Fiber Router
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/gofiber/fiber/v2"
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+)
+
+func main() {
+	auth, err := gobetterauth.New(&domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "your-secret-key-here",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: "./auth.db",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	app := fiber.New()
+
+	// Mount auth handler on Fiber router
+	app.Use("/api/auth", func(c *fiber.Ctx) error {
+		return auth.Handler().ServeHTTP(c.Response().Writer, c.Request())
+	})
+
+	log.Println("Server running on http://localhost:8080")
+	log.Fatal(app.Listen(":8080"))
+}
+```
+
+

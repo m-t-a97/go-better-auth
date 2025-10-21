@@ -13,7 +13,6 @@ import (
 type Adapter interface {
 	// Health checks
 	HealthCheck(ctx context.Context) error
-	Close() error
 
 	// User repository
 	UserRepository() user.Repository
@@ -29,6 +28,8 @@ type Adapter interface {
 
 	// Transaction support
 	BeginTx(ctx context.Context) (Transaction, error)
+
+	Close() error
 }
 
 // Transaction defines the interface for database transactions

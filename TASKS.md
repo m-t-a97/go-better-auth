@@ -93,7 +93,7 @@
 ## 6. Email & Password Authentication
 
 ### 6.1 Password Management
-- [x] Implement secure password hashing (bcrypt/scrypt)
+- [x] Implement secure password hashing (argon2)
 - [ ] Add custom password hashing support
 - [x] Create password verification utilities
 

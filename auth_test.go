@@ -1,6 +1,8 @@
 package gobetterauth
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/m-t-a97/go-better-auth/domain"
@@ -110,4 +112,58 @@ func TestAuth_SecretGeneration(t *testing.T) {
 	// Validate secret
 	err = generator.ValidateSecret(secret)
 	assert.NoError(t, err)
+}
+
+func TestAuth_Handler(t *testing.T) {
+	config := &domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "very-secret-key-that-is-long-enough",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: ":memory:",
+		},
+	}
+
+	auth, err := New(config)
+	require.NoError(t, err)
+
+	// Get the handler
+	handler := auth.Handler()
+	assert.NotNil(t, handler)
+
+	// Test that it implements http.Handler
+	var _ http.Handler = handler
+
+	// Test basic HTTP request
+	req := httptest.NewRequest("GET", "/auth/me", nil)
+	w := httptest.NewRecorder()
+
+	// Handler should respond (even if 404 or error since no session)
+	handler.ServeHTTP(w, req)
+	assert.NotZero(t, w.Code)
+}
+
+func TestAuth_HandlerWithStdlibMux(t *testing.T) {
+	config := &domain.Config{
+		BaseURL: "http://localhost:8080",
+		Secret:  "very-secret-key-that-is-long-enough",
+		Database: domain.DatabaseConfig{
+			Provider:         "sqlite",
+			ConnectionString: ":memory:",
+		},
+	}
+
+	auth, err := New(config)
+	require.NoError(t, err)
+
+	// Test that handler can be mounted on stdlib mux
+	mux := http.NewServeMux()
+	mux.Handle("/api/auth/", auth.Handler())
+
+	// Make a test request
+	req := httptest.NewRequest("GET", "/api/auth/me", nil)
+	w := httptest.NewRecorder()
+
+	mux.ServeHTTP(w, req)
+	assert.NotZero(t, w.Code)
 }

@@ -31,7 +31,8 @@ func TestSignIn_Valid(t *testing.T) {
 		t.Fatalf("Failed to create test account: %v", err)
 	}
 
-	service := NewService(userRepo, sessionRepo, accountRepo, verificationRepo)
+	service := NewService(
+		createTestConfig(),userRepo, sessionRepo, accountRepo, verificationRepo)
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -76,7 +77,8 @@ func TestSignIn_InvalidPassword(t *testing.T) {
 	testAccount := createTestAccount(testUser.ID, &hashedPassword)
 	accountRepo.Create(testAccount)
 
-	service := NewService(userRepo, memory.NewSessionRepository(), accountRepo, memory.NewVerificationRepository())
+	service := NewService(
+		createTestConfig(),userRepo, memory.NewSessionRepository(), accountRepo, memory.NewVerificationRepository())
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -93,6 +95,7 @@ func TestSignIn_InvalidPassword(t *testing.T) {
 
 func TestSignIn_UserNotFound(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -119,7 +122,8 @@ func TestSignIn_AccountNotFound(t *testing.T) {
 	testUser := createTestUser()
 	userRepo.Create(testUser)
 
-	service := NewService(userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), memory.NewVerificationRepository())
+	service := NewService(
+		createTestConfig(),userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), memory.NewVerificationRepository())
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -182,6 +186,7 @@ func TestSignOut_Valid(t *testing.T) {
 	sessionRepo.Create(testSession)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		sessionRepo,
 		memory.NewAccountRepository(),
@@ -206,6 +211,7 @@ func TestSignOut_Valid(t *testing.T) {
 
 func TestSignOut_InvalidToken(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

@@ -1,8 +1,25 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/user"
 )
+
+// userToDomain converts a domain/user.User to domain.User
+func userToDomain(u *user.User) *domain.User {
+	return &domain.User{
+		ID:            u.ID,
+		Name:          u.Name,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		Image:         u.Image,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+	}
+}
 
 // DeleteUserRequest contains the request data for deleting a user
 type DeleteUserRequest struct {
@@ -26,9 +43,19 @@ func (s *Service) DeleteUser(req *DeleteUserRequest) (*DeleteUserResponse, error
 	}
 
 	// Check if user exists
-	_, err := s.userRepo.FindByID(req.UserID)
+	user, err := s.userRepo.FindByID(req.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Call BeforeDelete hook if configured
+	ctx := context.Background()
+	if s.config != nil && s.config.User != nil && s.config.User.DeleteUser != nil && s.config.User.DeleteUser.BeforeDelete != nil {
+		// Convert user entity to domain.User for the hook
+		domainUser := userToDomain(user)
+		if err := s.config.User.DeleteUser.BeforeDelete(ctx, domainUser); err != nil {
+			return nil, fmt.Errorf("before delete hook failed: %w", err)
+		}
 	}
 
 	// Delete all sessions for this user
@@ -59,6 +86,15 @@ func (s *Service) DeleteUser(req *DeleteUserRequest) (*DeleteUserResponse, error
 	// Delete the user
 	if err := s.userRepo.Delete(req.UserID); err != nil {
 		return nil, fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	// Call AfterDelete hook if configured
+	if s.config != nil && s.config.User != nil && s.config.User.DeleteUser != nil && s.config.User.DeleteUser.AfterDelete != nil {
+		// Convert user entity to domain.User for the hook
+		domainUser := userToDomain(user)
+		if err := s.config.User.DeleteUser.AfterDelete(ctx, domainUser); err != nil {
+			return nil, fmt.Errorf("after delete hook failed: %w", err)
+		}
 	}
 
 	return &DeleteUserResponse{

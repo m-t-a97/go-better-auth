@@ -12,6 +12,7 @@ import (
 
 func TestUpdateUser_Valid(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -48,6 +49,7 @@ func TestUpdateUser_Valid(t *testing.T) {
 
 func TestUpdateUser_UpdateImage(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -83,6 +85,7 @@ func TestUpdateUser_UpdateImage(t *testing.T) {
 
 func TestUpdateUser_UpdateBothNameAndImage(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -120,6 +123,7 @@ func TestUpdateUser_UpdateBothNameAndImage(t *testing.T) {
 
 func TestUpdateUser_NilRequest(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -134,6 +138,7 @@ func TestUpdateUser_NilRequest(t *testing.T) {
 
 func TestUpdateUser_EmptyUserID(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -154,6 +159,7 @@ func TestUpdateUser_EmptyUserID(t *testing.T) {
 
 func TestUpdateUser_UserNotFound(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -174,6 +180,7 @@ func TestUpdateUser_UserNotFound(t *testing.T) {
 
 func TestUpdateUser_InvalidName(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -205,6 +212,7 @@ func TestUpdateUser_InvalidName(t *testing.T) {
 
 func TestUpdateUser_NoChanges(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -242,6 +250,7 @@ func TestUpdateUser_NoChanges(t *testing.T) {
 
 func TestDeleteUser_Valid(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -275,6 +284,7 @@ func TestDeleteUser_Valid(t *testing.T) {
 
 func TestDeleteUser_WithSessions(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -324,6 +334,7 @@ func TestDeleteUser_WithSessions(t *testing.T) {
 
 func TestDeleteUser_WithOAuthAccounts(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -356,6 +367,7 @@ func TestDeleteUser_WithOAuthAccounts(t *testing.T) {
 
 func TestDeleteUser_NilRequest(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -370,6 +382,7 @@ func TestDeleteUser_NilRequest(t *testing.T) {
 
 func TestDeleteUser_EmptyUserID(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -388,6 +401,7 @@ func TestDeleteUser_EmptyUserID(t *testing.T) {
 
 func TestDeleteUser_UserNotFound(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -406,6 +420,7 @@ func TestDeleteUser_UserNotFound(t *testing.T) {
 
 func TestDeleteUser_MultipleSessionsDeleted(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

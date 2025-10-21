@@ -18,6 +18,7 @@ func TestValidateSession_Valid(t *testing.T) {
 	sessionRepo.Create(testSession)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		sessionRepo,
 		memory.NewAccountRepository(),
@@ -55,6 +56,7 @@ func TestValidateSession_Expired(t *testing.T) {
 	sessionRepo.Create(testSession)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		sessionRepo,
 		memory.NewAccountRepository(),
@@ -77,6 +79,7 @@ func TestValidateSession_Expired(t *testing.T) {
 
 func TestValidateSession_NotFound(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -110,6 +113,7 @@ func TestRefreshToken_Valid(t *testing.T) {
 	sessionRepo.Create(testSession)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		sessionRepo,
 		memory.NewAccountRepository(),
@@ -163,6 +167,7 @@ func TestRefreshToken_Expired(t *testing.T) {
 	sessionRepo.Create(testSession)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		sessionRepo,
 		memory.NewAccountRepository(),
@@ -188,6 +193,7 @@ func TestRequestPasswordReset_Valid(t *testing.T) {
 	userRepo.Create(testUser)
 
 	service := NewService(
+		createTestConfig(),
 		userRepo,
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -248,7 +254,8 @@ func TestResetPassword_Valid(t *testing.T) {
 	}
 	verificationRepo.Create(v)
 
-	service := NewService(userRepo, memory.NewSessionRepository(), accountRepo, verificationRepo)
+	service := NewService(
+		createTestConfig(),userRepo, memory.NewSessionRepository(), accountRepo, verificationRepo)
 
 	req := &ResetPasswordRequest{
 		ResetToken:  resetToken,
@@ -291,6 +298,7 @@ func TestResetPassword_Valid(t *testing.T) {
 
 func TestResetPassword_InvalidToken(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -312,6 +320,7 @@ func TestRequestEmailVerification_Valid(t *testing.T) {
 	verificationRepo := memory.NewVerificationRepository()
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -368,7 +377,8 @@ func TestVerifyEmail_Valid(t *testing.T) {
 	}
 	verificationRepo.Create(v)
 
-	service := NewService(userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), verificationRepo)
+	service := NewService(
+		createTestConfig(),userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), verificationRepo)
 
 	req := &VerifyEmailRequest{
 		VerificationToken: verificationToken,
@@ -416,6 +426,7 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 	verificationRepo.Create(v)
 
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -440,6 +451,7 @@ func TestGetProfile_Valid(t *testing.T) {
 	userRepo.Create(testUser)
 
 	service := NewService(
+		createTestConfig(),
 		userRepo,
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -470,6 +482,7 @@ func TestGetProfile_Valid(t *testing.T) {
 
 func TestGetProfile_NotFound(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

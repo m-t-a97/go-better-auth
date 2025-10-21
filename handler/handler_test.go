@@ -7,12 +7,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
 func setupTestService() *auth.Service {
+	config := &domain.Config{}
+	config.ApplyDefaults()
+
 	return auth.NewService(
+		config,
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

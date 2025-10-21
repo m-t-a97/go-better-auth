@@ -10,6 +10,7 @@ import (
 
 func TestSignUp_Valid(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -50,6 +51,7 @@ func TestSignUp_Valid(t *testing.T) {
 
 func TestSignUp_DuplicateEmail(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -83,6 +85,7 @@ func TestSignUp_DuplicateEmail(t *testing.T) {
 
 func TestSignUp_InvalidEmail(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -115,6 +118,7 @@ func TestSignUp_InvalidEmail(t *testing.T) {
 
 func TestSignUp_InvalidPassword(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -148,6 +152,7 @@ func TestSignUp_InvalidPassword(t *testing.T) {
 
 func TestSignUp_InvalidName(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -171,6 +176,7 @@ func TestSignUp_PasswordHashing(t *testing.T) {
 	accountRepo := memory.NewAccountRepository()
 
 	service := NewService(
+		createTestConfig(),
 		userRepo,
 		memory.NewSessionRepository(),
 		accountRepo,
@@ -214,6 +220,7 @@ func TestSignUp_CreatedAccountWithProvider(t *testing.T) {
 	accountRepo := memory.NewAccountRepository()
 
 	service := NewService(
+		createTestConfig(),
 		userRepo,
 		memory.NewSessionRepository(),
 		accountRepo,
@@ -252,6 +259,7 @@ func TestSignUp_CreatedAccountWithProvider(t *testing.T) {
 
 func TestSignUp_TimestampsSet(t *testing.T) {
 	service := NewService(
+		createTestConfig(),
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

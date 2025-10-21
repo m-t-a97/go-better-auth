@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 	"github.com/stretchr/testify/assert"
@@ -81,6 +82,7 @@ func TestGetSessionToken_Missing(t *testing.T) {
 func TestAuthMiddleware_ValidBearerToken(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -124,6 +126,7 @@ func TestAuthMiddleware_ValidBearerToken(t *testing.T) {
 
 func TestAuthMiddleware_MissingToken(t *testing.T) {
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -145,6 +148,7 @@ func TestAuthMiddleware_MissingToken(t *testing.T) {
 
 func TestAuthMiddleware_InvalidToken(t *testing.T) {
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -167,6 +171,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 
 func TestAuthMiddleware_InvalidBearerFormat(t *testing.T) {
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -190,6 +195,7 @@ func TestAuthMiddleware_InvalidBearerFormat(t *testing.T) {
 func TestAuthMiddleware_CookieToken(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -237,6 +243,7 @@ func TestAuthMiddleware_CookieToken(t *testing.T) {
 func TestAuthMiddleware_HandlerFunc(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -286,6 +293,7 @@ func TestAuthMiddleware_HandlerFunc(t *testing.T) {
 func TestOptionalAuthMiddleware_ValidToken(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -328,6 +336,7 @@ func TestOptionalAuthMiddleware_ValidToken(t *testing.T) {
 
 func TestOptionalAuthMiddleware_NoToken(t *testing.T) {
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -352,6 +361,7 @@ func TestOptionalAuthMiddleware_NoToken(t *testing.T) {
 
 func TestOptionalAuthMiddleware_InvalidToken(t *testing.T) {
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -378,6 +388,7 @@ func TestOptionalAuthMiddleware_InvalidToken(t *testing.T) {
 func TestAuthMiddleware_SetSessionTokenInContext(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -423,6 +434,7 @@ func TestAuthMiddleware_SetSessionTokenInContext(t *testing.T) {
 func TestAuthMiddleware_ExpiredSession(t *testing.T) {
 	// Setup
 	service := auth.NewService(
+		&domain.Config{},
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),

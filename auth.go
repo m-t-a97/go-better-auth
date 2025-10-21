@@ -127,6 +127,7 @@ func (a *Auth) CipherManager() *crypto.CipherManager {
 func (a *Auth) Handler() http.Handler {
 	// Create the authentication service with repositories from the adapter
 	service := auth.NewService(
+		a.config,
 		a.adapter.UserRepository(),
 		a.adapter.SessionRepository(),
 		a.adapter.AccountRepository(),

@@ -55,7 +55,7 @@
 ### 3.3 User Features
 - [x] Implement change email functionality with verification
 - [x] Add email verification system integration
-- [ ] Create user deletion with before/after hooks
+- [x] Create user deletion with before/after hooks
 
 ## 4. Session Management
 
@@ -71,7 +71,6 @@
 - [x] Implement session deletion usecase
 
 ### 4.3 Session Storage
-- [ ] Add cookie-based session storage
 - [x] Implement database session storage
 - [ ] Add secondary storage support (Redis, etc.)
 - [x] Implement session cleanup for expired sessions

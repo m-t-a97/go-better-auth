@@ -50,8 +50,9 @@
 ### 3.2 User Operations
 - [x] Implement user creation usecase
 - [x] Implement user retrieval usecases (by ID, email)
-- [ ] Implement user update usecase
-- [ ] Implement user deletion usecase with hooks
+- [x] Implement user update usecase
+- [x] Implement user deletion usecase with hooks
+- [x] Create HTTP handlers for update and delete operations
 
 ### 3.3 User Features
 - [ ] Implement change email functionality with verification
@@ -225,7 +226,8 @@
 - [x] Implement session management endpoints
 
 ### 14.2 Middleware Stack
-- [ ] Create authentication middleware
+- [x] Create authentication middleware (with optional auth variant)
+- [x] Add context utilities for user ID and token extraction
 - [ ] Add CORS middleware
 - [ ] Implement rate limiting middleware
 - [ ] Add logging middleware

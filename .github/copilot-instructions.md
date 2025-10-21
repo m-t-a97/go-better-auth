@@ -32,6 +32,7 @@
   - Dependencies should always point inward: handler/infrastructure → usecase → domain.
   - Use dependency injection to provide implementations to use cases and handlers.
   - Keep domain and usecase layers free of framework-specific code for maximum testability and portability.
+  - Make sure to add relevant json tags to structs that will be serialized to/from JSON especially if it's part of the request/response lifecycle between the frontend and backend.
 
 - Modular Design:
   - Follow S.O.L.I.D principles and make sure that every feature and domain is separated into its own folder and relevant files. Make sure each code file is not very large and if needed separate it into multiple different files to make the code more readable, maintainable and testable. Always create interfaces to abstract away implementations and make the code loosely coupled.

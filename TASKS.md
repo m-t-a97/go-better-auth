@@ -80,7 +80,7 @@
 ### 5.1 Domain Layer
 - [x] Define Account entity for OAuth providers
 - [x] Create AccountRepository interface
-- [ ] Add account linking business rules/
+- [x] Add account linking business rules
 
 ### 5.2 OAuth Integration
 - [ ] Implement OAuth flow handlers for each provider (Google, GitHub, Discord)

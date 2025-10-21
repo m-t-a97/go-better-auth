@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+
+	"github.com/m-t-a97/go-better-auth/storage"
 )
 
 // Config is the main configuration struct for Go Better Auth
@@ -31,6 +33,9 @@ type Config struct {
 
 	// Database configuration
 	Database DatabaseConfig
+
+	// Secondary Storage
+	SecondaryStorage storage.SecondaryStorage
 
 	// EmailVerification configuration
 	EmailVerification *EmailVerificationConfig
@@ -186,6 +191,30 @@ type DatabaseConfig struct {
 
 	// Casing defines the casing strategy for database columns ("camel", "snake")
 	Casing string
+}
+
+// RedisConfig holds Redis configuration for secondary storage
+type RedisConfig struct {
+	// Host is the Redis server host (default: "localhost")
+	Host string
+
+	// Port is the Redis server port (default: 6379)
+	Port int
+
+	// DB is the Redis database number (default: 0)
+	DB int
+
+	// Password is the Redis password (optional)
+	Password string
+
+	// TLS enables TLS connection to Redis (default: false)
+	TLS bool
+
+	// MaxRetries is the maximum number of retries (default: 3)
+	MaxRetries int
+
+	// PoolSize is the connection pool size (default: 10)
+	PoolSize int
 }
 
 // EmailVerificationConfig holds email verification configuration

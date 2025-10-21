@@ -17,8 +17,8 @@ type ValidateSessionRequest struct {
 // ValidateSessionResponse is the HTTP response for validating a session
 type ValidateSessionResponse struct {
 	Valid     bool      `json:"valid"`
-	UserID    string    `json:"user_id,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+	UserID    string    `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // ValidateSessionHandler handles GET /auth/validate

@@ -68,6 +68,8 @@ func New(config *domain.Config) (*Auth, error) {
 }
 
 // createAdapter creates the appropriate database adapter based on configuration
+// Redis can be configured as secondary storage for sessions and rate limiting,
+// but a primary database (sqlite or postgres) is always required.
 func createAdapter(cfg *domain.Config) (adapter.Adapter, error) {
 	provider := strings.ToLower(cfg.Database.Provider)
 
@@ -80,14 +82,24 @@ func createAdapter(cfg *domain.Config) (adapter.Adapter, error) {
 		LogQueries:      false,
 	}
 
+	// Create primary adapter
+	var primaryAdapter adapter.Adapter
+	var err error
+
 	switch provider {
 	case "sqlite":
-		return sqlite.NewSQLiteAdapter(adapterCfg)
+		primaryAdapter, err = sqlite.NewSQLiteAdapter(adapterCfg)
 	case "postgres":
-		return postgres.NewPostgresAdapter(adapterCfg)
+		primaryAdapter, err = postgres.NewPostgresAdapter(adapterCfg)
 	default:
-		return nil, fmt.Errorf("unsupported database provider: %s", provider)
+		return nil, fmt.Errorf("unsupported database provider: %s (must be 'sqlite' or 'postgres')", provider)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return primaryAdapter, nil
 }
 
 // Config returns the configuration
@@ -113,17 +125,6 @@ func (a *Auth) CipherManager() *crypto.CipherManager {
 // Handler returns an http.Handler that implements all authentication endpoints.
 // This handler can be mounted on any HTTP server, including Chi, Echo, and stdlib mux.
 // The handler automatically includes CORS middleware configured with the trusted origins.
-// Usage with stdlib:
-//
-//	http.Handle("/auth/", auth.Handler())
-//
-// Usage with Chi:
-//
-//	r.Mount("/auth", http.StripPrefix("/auth", auth.Handler()))
-//
-// Usage with Echo:
-//
-//	e.Any("/auth/*", echo.WrapHandler(auth.Handler()))
 func (a *Auth) Handler() http.Handler {
 	// Create the authentication service with repositories from the adapter
 	service := auth.NewService(

@@ -72,7 +72,7 @@
 
 ### 4.3 Session Storage
 - [x] Implement database session storage
-- [ ] Add secondary storage support (Redis, etc.)
+- [x] Add secondary storage support (Redis, etc.)
 - [x] Implement session cleanup for expired sessions
 
 ## 5. Account Management (OAuth)

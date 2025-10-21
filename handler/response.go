@@ -7,10 +7,10 @@ import (
 
 // Response is the standard API response envelope
 type Response struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-	Code    int         `json:"code"`
+	Success bool   `json:"success"`
+	Data    any    `json:"data,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Code    int    `json:"code"`
 }
 
 // ErrorResponse writes a JSON error response

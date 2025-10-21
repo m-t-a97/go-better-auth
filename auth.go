@@ -9,9 +9,9 @@ import (
 
 // Auth represents the main authentication system
 type Auth struct {
-	config           *domain.Config
-	secretGenerator  *crypto.SecretGenerator
-	passwordHasher   *crypto.PasswordHasher
+	config          *domain.Config
+	secretGenerator *crypto.SecretGenerator
+	passwordHasher  *crypto.PasswordHasher
 }
 
 // New creates a new instance of the authentication system
@@ -31,9 +31,9 @@ func New(config *domain.Config) (*Auth, error) {
 
 	// Create the auth instance
 	auth := &Auth{
-		config:           config,
-		secretGenerator:  crypto.NewSecretGenerator(),
-		passwordHasher:   crypto.NewPasswordHasher(),
+		config:          config,
+		secretGenerator: crypto.NewSecretGenerator(),
+		passwordHasher:  crypto.NewPasswordHasher(),
 	}
 
 	return auth, nil

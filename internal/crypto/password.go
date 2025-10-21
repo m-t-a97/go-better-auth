@@ -183,3 +183,15 @@ func base64URLEncode(data []byte) string {
 func base64URLDecode(s string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(s)
 }
+
+// HashPassword is a convenience function to hash a password using the default hasher
+func HashPassword(password string) (string, error) {
+	hasher := NewPasswordHasher()
+	return hasher.Hash(password)
+}
+
+// VerifyPassword is a convenience function to verify a password using the default hasher
+func VerifyPassword(password, hash string) (bool, error) {
+	hasher := NewPasswordHasher()
+	return hasher.Verify(password, hash)
+}

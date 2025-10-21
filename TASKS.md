@@ -3,10 +3,10 @@
 ## 1. Core Configuration Management
 
 ### 1.1 Base Configuration Structure
-- [ ] Implement configuration loading from environment variables (GO_BETTER_AUTH_URL, GO_BETTER_AUTH_SECRET, AUTH_SECRET)
-- [ ] Add configuration validation at startup with proper error messages
-- [ ] Implement default values for all config fields
-- [ ] Create configuration merging logic for defaults and user-provided config
+- [x] Implement configuration loading from environment variables (GO_BETTER_AUTH_URL, GO_BETTER_AUTH_SECRET, AUTH_SECRET)
+- [x] Add configuration validation at startup with proper error messages
+- [x] Implement default values for all config fields
+- [x] Create configuration merging logic for defaults and user-provided config
 
 ### 1.2 Trusted Origins & CORS
 - [ ] Implement static origins validation
@@ -15,73 +15,73 @@
 - [ ] Add wildcard pattern matching for origins
 
 ### 1.3 Secret Management
-- [ ] Implement secret validation (required in production)
-- [ ] Add secure secret generation utilities
+- [x] Implement secret validation (required in production)
+- [x] Add secure secret generation utilities
 - [ ] Create encryption/signing utilities using the secret
 
 ## 2. Database Layer
 
 ### 2.1 Database Adapters
-- [ ] Implement SQLite adapter with connection pooling
-- [ ] Implement PostgreSQL adapter with connection pooling
+- [x] Implement SQLite adapter with connection pooling
+- [x] Implement PostgreSQL adapter with connection pooling
 - [ ] Add database connection health checks
 - [ ] Create database migration system for schema updates
 
 ### 2.2 Repository Pattern
-- [ ] Define repository interfaces in domain layer
-- [ ] Implement generic CRUD operations
+- [x] Define repository interfaces in domain layer
+- [x] Implement generic CRUD operations
 - [ ] Add transaction support for multi-table operations
-- [ ] Create database-specific implementations for SQLite/PostgreSQL
+- [x] Create database-specific implementations for SQLite/PostgreSQL (in-memory only, database adapters pending)
 
 ### 2.3 Schema Management
-- [ ] Design and implement user table schema
-- [ ] Design and implement session table schema
-- [ ] Design and implement account table schema
-- [ ] Design and implement verification table schema
+- [x] Design and implement user table schema
+- [x] Design and implement session table schema
+- [x] Design and implement account table schema
+- [x] Design and implement verification table schema
 - [ ] Add support for custom fields and additional fields
 
 ## 3. User Management
 
 ### 3.1 Domain Layer
-- [ ] Define User entity with core fields (id, email, name, etc.)
-- [ ] Create UserRepository interface
-- [ ] Add user validation rules (email format, password strength)
+- [x] Define User entity with core fields (id, email, name, etc.)
+- [x] Create UserRepository interface
+- [x] Add user validation rules (email format, password strength)
 
 ### 3.2 User Operations
-- [ ] Implement user creation usecase
-- [ ] Implement user retrieval usecases (by ID, email)
+- [x] Implement user creation usecase
+- [x] Implement user retrieval usecases (by ID, email)
 - [ ] Implement user update usecase
 - [ ] Implement user deletion usecase with hooks
 
 ### 3.3 User Features
 - [ ] Implement change email functionality with verification
-- [ ] Add email verification system integration
+- [x] Add email verification system integration
 - [ ] Create user deletion with before/after hooks
 
 ## 4. Session Management
 
 ### 4.1 Domain Layer
-- [ ] Define Session entity
-- [ ] Create SessionRepository interface
-- [ ] Add session validation business rules
+- [x] Define Session entity
+- [x] Create SessionRepository interface
+- [x] Add session validation business rules
 
 ### 4.2 Session Operations
-- [ ] Implement session creation usecase
-- [ ] Implement session validation usecase
-- [ ] Implement session refresh usecase
-- [ ] Implement session deletion usecase
+- [x] Implement session creation usecase
+- [x] Implement session validation usecase
+- [x] Implement session refresh usecase
+- [x] Implement session deletion usecase
 
 ### 4.3 Session Storage
 - [ ] Add cookie-based session storage
-- [ ] Implement database session storage
+- [x] Implement database session storage
 - [ ] Add secondary storage support (Redis, etc.)
-- [ ] Implement session cleanup for expired sessions
+- [x] Implement session cleanup for expired sessions
 
 ## 5. Account Management (OAuth)
 
 ### 5.1 Domain Layer
-- [ ] Define Account entity for OAuth providers
-- [ ] Create AccountRepository interface
+- [x] Define Account entity for OAuth providers
+- [x] Create AccountRepository interface
 - [ ] Add account linking business rules
 
 ### 5.2 OAuth Integration
@@ -93,15 +93,15 @@
 ## 6. Email & Password Authentication
 
 ### 6.1 Password Management
-- [ ] Implement secure password hashing (bcrypt/scrypt)
+- [x] Implement secure password hashing (bcrypt/scrypt)
 - [ ] Add custom password hashing support
-- [ ] Create password verification utilities
+- [x] Create password verification utilities
 
 ### 6.2 Authentication Flow
-- [ ] Implement sign up usecase with email verification
-- [ ] Implement sign in usecase
-- [ ] Add password reset functionality
-- [ ] Implement automatic sign in after verification
+- [x] Implement sign up usecase with email verification
+- [x] Implement sign in usecase
+- [x] Add password reset functionality
+- [x] Implement automatic sign in after verification
 
 ### 6.3 Security Features
 - [ ] Add brute force protection
@@ -125,9 +125,9 @@
 ## 8. Email Verification System
 
 ### 8.1 Token Management
-- [ ] Implement verification token generation
-- [ ] Add token expiration handling
-- [ ] Create secure token storage
+- [x] Implement verification token generation
+- [x] Add token expiration handling
+- [x] Create secure token storage
 
 ### 8.2 Email Integration
 - [ ] Define email sending interface
@@ -136,9 +136,9 @@
 - [ ] Create verification endpoint handlers
 
 ### 8.3 Verification Flow
-- [ ] Implement token verification usecase
-- [ ] Add automatic sign in after verification
-- [ ] Create verification cleanup for expired tokens
+- [x] Implement token verification usecase
+- [x] Add automatic sign in after verification
+- [x] Create verification cleanup for expired tokens
 
 ## 9. Rate Limiting
 
@@ -200,15 +200,15 @@
 ## 13. Error Handling & Logging
 
 ### 13.1 Logging System
-- [ ] Implement structured logging with slog
+- [x] Implement structured logging with slog
 - [ ] Add configurable log levels
 - [ ] Create request context logging
 - [ ] Add color control for console output
 
 ### 13.2 Error Handling
-- [ ] Define custom error types
-- [ ] Implement error wrapping and chaining
-- [ ] Add API error responses
+- [x] Define custom error types
+- [x] Implement error wrapping and chaining
+- [x] Add API error responses
 - [ ] Create custom error handlers
 
 ### 13.3 Observability
@@ -219,10 +219,10 @@
 ## 14. HTTP Handlers & API
 
 ### 14.1 Core Handlers
-- [ ] Implement authentication endpoints (/sign-in, /sign-up, /sign-out)
+- [x] Implement authentication endpoints (/sign-in, /sign-up, /sign-out)
 - [ ] Add OAuth provider endpoints
-- [ ] Create verification endpoints
-- [ ] Implement session management endpoints
+- [x] Create verification endpoints
+- [x] Implement session management endpoints
 
 ### 14.2 Middleware Stack
 - [ ] Create authentication middleware
@@ -231,18 +231,18 @@
 - [ ] Add logging middleware
 
 ### 14.3 API Design
-- [ ] Design RESTful API endpoints
+- [x] Design RESTful API endpoints
 - [ ] Add OpenAPI/Swagger documentation
-- [ ] Implement consistent response formats
-- [ ] Create error response standardization
+- [x] Implement consistent response formats
+- [x] Create error response standardization
 
 ## 15. Testing & Quality Assurance
 
 ### 15.1 Unit Tests
-- [ ] Write unit tests for all domain logic
-- [ ] Add usecase layer testing
-- [ ] Create repository interface testing
-- [ ] Implement handler testing
+- [x] Write unit tests for all domain logic
+- [x] Add usecase layer testing
+- [x] Create repository interface testing
+- [x] Implement handler testing
 
 ### 15.2 Integration Tests
 - [ ] Add database integration tests

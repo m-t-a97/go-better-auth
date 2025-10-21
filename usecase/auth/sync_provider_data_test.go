@@ -1,0 +1,346 @@
+package auth
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/m-t-a97/go-better-auth/domain/account"
+	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/m-t-a97/go-better-auth/repository/memory"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestSyncProviderData_UpdateUserProfile(t *testing.T) {
+	ctx := context.Background()
+	config := createTestConfig()
+
+	userRepo := memory.NewUserRepository()
+	accountRepo := memory.NewAccountRepository()
+	sessionRepo := memory.NewSessionRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	// Create a user
+	newUser := &user.User{
+		Name:      "Old Name",
+		Email:     "user@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := userRepo.Create(newUser)
+	require.NoError(t, err)
+
+	// Link OAuth account
+	linkReq := &LinkOAuthAccountRequest{
+		UserID:      newUser.ID,
+		ProviderID:  account.ProviderGoogle,
+		AccountID:   "google-123",
+		AccessToken: "token-123",
+	}
+
+	_, err = service.LinkOAuthAccount(ctx, linkReq)
+	require.NoError(t, err)
+
+	// Sync provider data with new name and picture
+	pictureURL := "https://example.com/photo.jpg"
+	syncReq := &SyncProviderDataRequest{
+		UserID:     newUser.ID,
+		ProviderID: account.ProviderGoogle,
+		OAuthUser: &account.OAuthUser{
+			ID:      "google-123",
+			Email:   "user@example.com",
+			Name:    "New Name",
+			Picture: &pictureURL,
+		},
+		UpdateUser: true,
+	}
+
+	resp, err := service.SyncProviderData(ctx, syncReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, "New Name", resp.User.Name)
+	assert.Equal(t, &pictureURL, resp.User.Image)
+	assert.True(t, resp.Changes["name"])
+	assert.True(t, resp.Changes["image"])
+}
+
+func TestSyncProviderData_NoChanges(t *testing.T) {
+	ctx := context.Background()
+	config := createTestConfig()
+
+	userRepo := memory.NewUserRepository()
+	accountRepo := memory.NewAccountRepository()
+	sessionRepo := memory.NewSessionRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	// Create a user
+	newUser := &user.User{
+		Name:      "Test User",
+		Email:     "user@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := userRepo.Create(newUser)
+	require.NoError(t, err)
+
+	// Link OAuth account
+	linkReq := &LinkOAuthAccountRequest{
+		UserID:      newUser.ID,
+		ProviderID:  account.ProviderGoogle,
+		AccountID:   "google-123",
+		AccessToken: "token-123",
+	}
+
+	_, err = service.LinkOAuthAccount(ctx, linkReq)
+	require.NoError(t, err)
+
+	// Sync provider data with same info
+	syncReq := &SyncProviderDataRequest{
+		UserID:     newUser.ID,
+		ProviderID: account.ProviderGoogle,
+		OAuthUser: &account.OAuthUser{
+			ID:    "google-123",
+			Email: "user@example.com",
+			Name:  "Test User",
+		},
+		UpdateUser: true,
+	}
+
+	resp, err := service.SyncProviderData(ctx, syncReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Should not have name or image changes
+	assert.False(t, resp.Changes["name"])
+	assert.False(t, resp.Changes["image"])
+}
+
+func TestSyncProviderData_LinkedAccountNotFound(t *testing.T) {
+	ctx := context.Background()
+	config := createTestConfig()
+
+	userRepo := memory.NewUserRepository()
+	accountRepo := memory.NewAccountRepository()
+	sessionRepo := memory.NewSessionRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	// Create a user without linking an account
+	newUser := &user.User{
+		Name:      "Test User",
+		Email:     "user@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := userRepo.Create(newUser)
+	require.NoError(t, err)
+
+	// Try to sync provider data for a non-existent linked account
+	syncReq := &SyncProviderDataRequest{
+		UserID:     newUser.ID,
+		ProviderID: account.ProviderGoogle,
+		OAuthUser: &account.OAuthUser{
+			ID:   "google-123",
+			Name: "Test User",
+		},
+		UpdateUser: true,
+	}
+
+	resp, err := service.SyncProviderData(ctx, syncReq)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "linked account not found")
+}
+
+func TestSyncProviderData_UserNotFound(t *testing.T) {
+	ctx := context.Background()
+	config := createTestConfig()
+
+	userRepo := memory.NewUserRepository()
+	accountRepo := memory.NewAccountRepository()
+	sessionRepo := memory.NewSessionRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	// Try to sync provider data for a non-existent user
+	syncReq := &SyncProviderDataRequest{
+		UserID:     "non-existent",
+		ProviderID: account.ProviderGoogle,
+		OAuthUser: &account.OAuthUser{
+			ID:   "google-123",
+			Name: "Test User",
+		},
+		UpdateUser: true,
+	}
+
+	resp, err := service.SyncProviderData(ctx, syncReq)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "user not found")
+}
+
+func TestSyncMultipleProvidersData(t *testing.T) {
+	ctx := context.Background()
+	config := createTestConfig()
+
+	userRepo := memory.NewUserRepository()
+	accountRepo := memory.NewAccountRepository()
+	sessionRepo := memory.NewSessionRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	// Create a user
+	newUser := &user.User{
+		Name:      "Old Name",
+		Email:     "user@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := userRepo.Create(newUser)
+	require.NoError(t, err)
+
+	// Link multiple OAuth accounts
+	providers := map[account.ProviderType]string{
+		account.ProviderGoogle:  "google-123",
+		account.ProviderGitHub:  "github-456",
+		account.ProviderDiscord: "discord-789",
+	}
+
+	for provider, accountID := range providers {
+		linkReq := &LinkOAuthAccountRequest{
+			UserID:      newUser.ID,
+			ProviderID:  provider,
+			AccountID:   accountID,
+			AccessToken: "token-" + accountID,
+		}
+
+		_, err = service.LinkOAuthAccount(ctx, linkReq)
+		require.NoError(t, err)
+	}
+
+	// Prepare provider data
+	pictureURL := "https://example.com/photo.jpg"
+	providerData := map[account.ProviderType]*account.OAuthUser{
+		account.ProviderGoogle: {
+			ID:      "google-123",
+			Email:   "user@example.com",
+			Name:    "Google Name",
+			Picture: &pictureURL,
+		},
+		account.ProviderGitHub: {
+			ID:   "github-456",
+			Name: "GitHub User",
+		},
+		account.ProviderDiscord: {
+			ID:   "discord-789",
+			Name: "Discord User",
+		},
+	}
+
+	// Sync multiple providers
+	resp, err := service.SyncMultipleProvidersData(ctx, newUser.ID, providerData)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Verify user was updated from first provider
+	assert.Equal(t, "Google Name", resp.User.Name)
+	assert.Equal(t, &pictureURL, resp.User.Image)
+}
+
+func TestMergeProviderProfiles(t *testing.T) {
+	pictureURL1 := "https://example.com/photo1.jpg"
+	pictureURL2 := "https://example.com/photo2.jpg"
+
+	profile1 := &account.OAuthUser{
+		ID:      "user-123",
+		Email:   "user@example.com",
+		Name:    "User Name",
+		Picture: &pictureURL1,
+	}
+
+	profile2 := &account.OAuthUser{
+		ID:      "user-456",
+		Email:   "different@example.com",
+		Name:    "",
+		Picture: &pictureURL2,
+	}
+
+	profile3 := &account.OAuthUser{
+		ID:   "user-789",
+		Name: "Another Name",
+	}
+
+	// Merge profiles - first one should take precedence for non-empty fields
+	merged := MergeProviderProfiles(profile1, profile2, profile3)
+
+	assert.Equal(t, "user-123", merged.ID)
+	assert.Equal(t, "user@example.com", merged.Email)
+	assert.Equal(t, "User Name", merged.Name)
+	assert.Equal(t, &pictureURL1, merged.Picture)
+}
+
+func TestMergeProviderProfiles_NilProfiles(t *testing.T) {
+	profile1 := &account.OAuthUser{
+		ID:   "user-123",
+		Name: "User Name",
+	}
+
+	// Should handle nil profiles gracefully
+	merged := MergeProviderProfiles(nil, profile1, nil)
+
+	assert.Equal(t, "user-123", merged.ID)
+	assert.Equal(t, "User Name", merged.Name)
+}
+
+func TestGetProviderUserEmail(t *testing.T) {
+	oauthUser := &account.OAuthUser{
+		ID:    "user-123",
+		Email: "user@example.com",
+		Name:  "Test User",
+	}
+
+	email := GetProviderUserEmail(oauthUser)
+	assert.Equal(t, "user@example.com", email)
+
+	// Test with nil
+	email = GetProviderUserEmail(nil)
+	assert.Empty(t, email)
+}
+
+func TestGetProviderUserName(t *testing.T) {
+	oauthUser := &account.OAuthUser{
+		ID:   "user-123",
+		Name: "Test User",
+	}
+
+	name := GetProviderUserName(oauthUser)
+	assert.Equal(t, "Test User", name)
+
+	// Test with nil
+	name = GetProviderUserName(nil)
+	assert.Empty(t, name)
+}
+
+func TestGetProviderUserPicture(t *testing.T) {
+	pictureURL := "https://example.com/photo.jpg"
+	oauthUser := &account.OAuthUser{
+		ID:      "user-123",
+		Picture: &pictureURL,
+	}
+
+	picture := GetProviderUserPicture(oauthUser)
+	assert.Equal(t, &pictureURL, picture)
+
+	// Test with nil
+	picture = GetProviderUserPicture(nil)
+	assert.Nil(t, picture)
+}

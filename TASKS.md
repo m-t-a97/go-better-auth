@@ -83,10 +83,10 @@
 - [x] Add account linking business rules
 
 ### 5.2 OAuth Integration
-- [ ] Implement OAuth flow handlers for each provider (Google, GitHub, Discord)
-- [ ] Add OAuth token encryption/decryption
-- [ ] Create account linking functionality
-- [ ] Implement provider data synchronization
+- [x] Implement OAuth flow handlers for each provider (Google, GitHub, Discord)
+- [x] Add OAuth token encryption/decryption
+- [x] Create account linking functionality
+- [x] Implement provider data synchronization
 
 ## 6. Email & Password Authentication
 

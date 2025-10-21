@@ -135,10 +135,7 @@ func (a *PostgresAdapter) BeginTx(ctx context.Context) (adapter.Transaction, err
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	return &PostgresTransaction{
-		tx:         tx,
-		logQueries: a.logQueries,
-	}, nil
+	return NewPostgresTransaction(tx, a.logQueries), nil
 }
 
 // migrate runs database migrations

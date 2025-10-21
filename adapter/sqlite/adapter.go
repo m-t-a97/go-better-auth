@@ -140,10 +140,7 @@ func (a *SQLiteAdapter) BeginTx(ctx context.Context) (adapter.Transaction, error
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	return &SQLiteTransaction{
-		tx:         tx,
-		logQueries: a.logQueries,
-	}, nil
+	return NewSQLiteTransaction(tx, a.logQueries), nil
 }
 
 // migrate runs database migrations

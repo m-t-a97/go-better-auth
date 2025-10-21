@@ -24,12 +24,11 @@
 ### 2.1 Database Adapters
 - [x] Implement SQLite adapter with connection pooling
 - [x] Implement PostgreSQL adapter with connection pooling
-- [ ] Create database migration system for schema updates
 
 ### 2.2 Repository Pattern
 - [x] Define repository interfaces in domain layer
 - [x] Implement generic CRUD operations
-- [ ] Add transaction support for multi-table operations
+- [x] Add transaction support for multi-table operations
 - [x] Create database-specific implementations for SQLite/PostgreSQL (in-memory only, database adapters pending)
 
 ### 2.3 Schema Management

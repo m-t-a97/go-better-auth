@@ -18,38 +18,9 @@ import (
 	"github.com/m-t-a97/go-better-auth/validation"
 )
 
-// AdvancedConfig holds advanced configuration options
-type AdvancedConfig struct {
-	PasswordHasher usecase.PasswordHasher
-	RateLimiting   bool
-	TrustedOrigins []string
-	SecureCookies  bool
-}
-
-// Config represents the configuration for Better Auth
-type Config struct {
-	// Database configuration
-	Database domain.DatabaseConfig
-
-	// Base URL of your application
-	BaseURL string
-
-	// Email and password configuration
-	EmailAndPassword domain.EmailPasswordConfig
-
-	// Session configuration
-	Session domain.SessionConfig
-
-	// Social providers
-	SocialProviders domain.SocialProvidersConfig
-
-	// Advanced configuration
-	Advanced AdvancedConfig
-}
-
 // GoBetterAuth represents the Go Better Auth instance
 type GoBetterAuth struct {
-	config           *Config
+	config           *domain.Config
 	authUseCase      *usecase.AuthUseCase
 	oauthUseCase     *usecase.OAuthUseCase
 	userRepo         usecase.UserRepository
@@ -58,21 +29,17 @@ type GoBetterAuth struct {
 	verificationRepo usecase.VerificationRepository
 }
 
-// New creates a new Better Auth instance
-func New(config *Config) (*GoBetterAuth, error) {
-	// Set defaults
-	if config.BaseURL == "" {
-		config.BaseURL = "http://localhost:8080"
+// New creates a new Better Auth instance with comprehensive configuration
+func New(config *domain.Config) (*GoBetterAuth, error) {
+	// Apply defaults
+	config.ApplyDefaults()
+
+	// Validate configuration
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
-	if config.Session.ExpiresIn == 0 {
-		config.Session.ExpiresIn = 7 * 24 * time.Hour
-	}
-
-	if config.EmailAndPassword.Enabled && !config.EmailAndPassword.AutoSignIn {
-		config.EmailAndPassword.AutoSignIn = true // Default to true
-	}
-
+	// Initialize validation
 	validation.Init()
 
 	// Initialize database repositories
@@ -96,7 +63,6 @@ func New(config *Config) (*GoBetterAuth, error) {
 			if err != nil {
 				return nil, err
 			}
-			// TODO: MySQL adapter
 		default:
 			return nil, &domain.AuthError{
 				Code:    "unsupported_database",
@@ -127,21 +93,38 @@ func New(config *Config) (*GoBetterAuth, error) {
 	}
 
 	// Initialize password hasher
-	passwordHasher := config.Advanced.PasswordHasher
-	if passwordHasher == nil {
+	var passwordHasher usecase.PasswordHasher
+	if config.EmailAndPassword != nil && config.EmailAndPassword.Password != nil {
+		// Use custom password hasher if provided
+		passwordHasher = &customPasswordHasher{
+			hashFunc:   config.EmailAndPassword.Password.Hash,
+			verifyFunc: config.EmailAndPassword.Password.Verify,
+		}
+	} else {
+		// Use default Argon2 hasher
 		passwordHasher = usecase.NewArgon2PasswordHasher()
 	}
 
 	// Create email sender wrapper
 	var emailSender usecase.EmailSender
-	if config.EmailAndPassword.SendVerificationEmail != nil || config.EmailAndPassword.SendPasswordResetEmail != nil {
+	if config.EmailVerification != nil || config.EmailAndPassword != nil {
 		emailSender = &emailSenderImpl{
-			sendVerification: config.EmailAndPassword.SendVerificationEmail,
-			sendReset:        config.EmailAndPassword.SendPasswordResetEmail,
+			config: config,
 		}
 	}
 
 	// Create auth use case
+	sessionExpiresIn := time.Duration(config.Session.ExpiresIn) * time.Second
+	verificationExpiry := time.Duration(config.EmailVerification.ExpiresIn) * time.Second
+
+	requireEmailVerification := false
+	autoSignIn := true
+
+	if config.EmailAndPassword != nil {
+		requireEmailVerification = config.EmailAndPassword.RequireEmailVerification
+		autoSignIn = config.EmailAndPassword.AutoSignIn
+	}
+
 	authUseCase := usecase.NewAuthUseCase(
 		userRepo,
 		sessionRepo,
@@ -151,10 +134,10 @@ func New(config *Config) (*GoBetterAuth, error) {
 		emailSender,
 		&domain.AuthConfig{
 			BaseURL:                  config.BaseURL,
-			SessionExpiresIn:         config.Session.ExpiresIn,
-			VerificationTokenExpiry:  24 * time.Hour,
-			RequireEmailVerification: config.EmailAndPassword.RequireEmailVerification,
-			AutoSignIn:               config.EmailAndPassword.AutoSignIn,
+			SessionExpiresIn:         sessionExpiresIn,
+			VerificationTokenExpiry:  verificationExpiry,
+			RequireEmailVerification: requireEmailVerification,
+			AutoSignIn:               autoSignIn,
 		},
 	)
 
@@ -165,52 +148,54 @@ func New(config *Config) (*GoBetterAuth, error) {
 		sessionRepo,
 		&domain.AuthConfig{
 			BaseURL:          config.BaseURL,
-			SessionExpiresIn: config.Session.ExpiresIn,
+			SessionExpiresIn: sessionExpiresIn,
 		},
 	)
 
 	// Register OAuth providers
-	if config.SocialProviders.Google != nil {
-		provider := usecase.NewGoogleProvider(
-			config.SocialProviders.Google.ClientID,
-			config.SocialProviders.Google.ClientSecret,
-			config.SocialProviders.Google.RedirectURL,
-		)
-		oauthUseCase.RegisterProvider(provider)
-	}
+	if config.SocialProviders != nil {
+		if config.SocialProviders.Google != nil {
+			provider := usecase.NewGoogleProvider(
+				config.SocialProviders.Google.ClientID,
+				config.SocialProviders.Google.ClientSecret,
+				config.SocialProviders.Google.RedirectURI,
+			)
+			oauthUseCase.RegisterProvider(provider)
+		}
 
-	if config.SocialProviders.GitHub != nil {
-		provider := usecase.NewGitHubProvider(
-			config.SocialProviders.GitHub.ClientID,
-			config.SocialProviders.GitHub.ClientSecret,
-			config.SocialProviders.GitHub.RedirectURL,
-		)
-		oauthUseCase.RegisterProvider(provider)
-	}
+		if config.SocialProviders.GitHub != nil {
+			provider := usecase.NewGitHubProvider(
+				config.SocialProviders.GitHub.ClientID,
+				config.SocialProviders.GitHub.ClientSecret,
+				config.SocialProviders.GitHub.RedirectURI,
+			)
+			oauthUseCase.RegisterProvider(provider)
+		}
 
-	if config.SocialProviders.Discord != nil {
-		provider := usecase.NewDiscordProvider(
-			config.SocialProviders.Discord.ClientID,
-			config.SocialProviders.Discord.ClientSecret,
-			config.SocialProviders.Discord.RedirectURL,
-		)
-		oauthUseCase.RegisterProvider(provider)
-	}
+		if config.SocialProviders.Discord != nil {
+			provider := usecase.NewDiscordProvider(
+				config.SocialProviders.Discord.ClientID,
+				config.SocialProviders.Discord.ClientSecret,
+				config.SocialProviders.Discord.RedirectURI,
+			)
+			oauthUseCase.RegisterProvider(provider)
+		}
 
-	// Register generic OAuth providers
-	for name, cfg := range config.SocialProviders.Generic {
-		provider := usecase.NewGenericOAuthProvider(
-			name,
-			cfg.ClientID,
-			cfg.ClientSecret,
-			cfg.RedirectURL,
-			cfg.AuthURL,
-			cfg.TokenURL,
-			cfg.UserInfoURL,
-			cfg.Scopes,
-			cfg.UserInfoMapper,
-		)
-		oauthUseCase.RegisterProvider(provider)
+		// Register generic OAuth providers
+		for name, cfg := range config.SocialProviders.Generic {
+			provider := usecase.NewGenericOAuthProvider(
+				name,
+				cfg.ClientID,
+				cfg.ClientSecret,
+				cfg.RedirectURI,
+				cfg.AuthURL,
+				cfg.TokenURL,
+				cfg.UserInfoURL,
+				cfg.Scopes,
+				cfg.UserInfoMapper,
+			)
+			oauthUseCase.RegisterProvider(provider)
+		}
 	}
 
 	return &GoBetterAuth{
@@ -247,8 +232,13 @@ func (gba *GoBetterAuth) Repositories() (
 // SessionAuth returns a session authentication middleware
 // This middleware can be used to protect routes and authenticate requests
 func (gba *GoBetterAuth) SessionAuth() *sessionauth.Middleware {
+	secure := false
+	if gba.config.Advanced != nil {
+		secure = gba.config.Advanced.UseSecureCookies
+	}
+
 	manager := sessionauth.NewManager(gba.sessionRepo, gba.userRepo, &sessionauth.ManagerConfig{
-		Secure: gba.config.Advanced.SecureCookies,
+		Secure: secure,
 	})
 	return sessionauth.NewMiddleware(manager)
 }
@@ -256,31 +246,57 @@ func (gba *GoBetterAuth) SessionAuth() *sessionauth.Middleware {
 // Handler returns an http.Handler for all authentication endpoints
 // This handler implements the standard library http.Handler interface and works with any framework
 func (gba *GoBetterAuth) Handler() http.Handler {
+	trustedOrigins := []string{}
+	if gba.config.TrustedOrigins.StaticOrigins != nil {
+		trustedOrigins = gba.config.TrustedOrigins.StaticOrigins
+	}
+
 	return httphandler.NewAuthHandler(
 		gba.authUseCase,
 		gba.oauthUseCase,
 		nil, // MFAUseCase not initialized yet
 		gba.config.BaseURL,
-		gba.config.Advanced.TrustedOrigins,
+		trustedOrigins,
 	)
+}
+
+// customPasswordHasher implements the PasswordHasher interface with custom functions
+type customPasswordHasher struct {
+	hashFunc   func(password string) (string, error)
+	verifyFunc func(password, hash string) bool
+}
+
+func (h *customPasswordHasher) Hash(password string) (string, error) {
+	return h.hashFunc(password)
+}
+
+func (h *customPasswordHasher) Verify(password, hash string) bool {
+	return h.verifyFunc(password, hash)
 }
 
 // emailSenderImpl implements the EmailSender interface
 type emailSenderImpl struct {
-	sendVerification func(email string, token string, url string) error
-	sendReset        func(email string, token string, url string) error
+	config *domain.Config
 }
 
 func (e *emailSenderImpl) SendVerificationEmail(ctx context.Context, email string, token string, url string) error {
-	if e.sendVerification == nil {
+	if e.config.EmailVerification == nil || e.config.EmailVerification.SendVerificationEmail == nil {
 		return nil
 	}
-	return e.sendVerification(email, token, url)
+
+	// Get user from context or create a minimal user object
+	user := &domain.User{Email: email}
+
+	return e.config.EmailVerification.SendVerificationEmail(ctx, user, url, token)
 }
 
 func (e *emailSenderImpl) SendPasswordResetEmail(ctx context.Context, email string, token string, url string) error {
-	if e.sendReset == nil {
+	if e.config.EmailAndPassword == nil || e.config.EmailAndPassword.SendResetPassword == nil {
 		return nil
 	}
-	return e.sendReset(email, token, url)
+
+	// Get user from context or create a minimal user object
+	user := &domain.User{Email: email}
+
+	return e.config.EmailAndPassword.SendResetPassword(ctx, user, url, token)
 }

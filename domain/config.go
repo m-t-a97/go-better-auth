@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strings"
 )
 
 // Config is the main configuration struct for Go Better Auth
@@ -84,6 +85,92 @@ type TrustedOriginsConfig struct {
 
 	// DynamicOrigins is a function that returns origins dynamically based on the request
 	DynamicOrigins func(r *http.Request) []string
+}
+
+// IsOriginTrusted checks if the given origin is trusted.
+// It supports static origins, dynamic origins via callback, and wildcard patterns.
+// Returns true if the origin is trusted, false otherwise.
+func (c *TrustedOriginsConfig) IsOriginTrusted(origin string, r *http.Request) bool {
+	if c == nil || origin == "" {
+		return false
+	}
+
+	// Check static origins
+	if len(c.StaticOrigins) > 0 {
+		if isOriginInList(origin, c.StaticOrigins) {
+			return true
+		}
+	}
+
+	// Check dynamic origins if provided and request is available
+	if c.DynamicOrigins != nil && r != nil {
+		dynamicOrigins := c.DynamicOrigins(r)
+		if isOriginInList(origin, dynamicOrigins) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isOriginInList checks if an origin is in a list of origins.
+// Supports exact match and wildcard patterns.
+func isOriginInList(origin string, origins []string) bool {
+	for _, trustedOrigin := range origins {
+		if matchesOriginPattern(origin, trustedOrigin) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesOriginPattern checks if an origin matches a pattern.
+// Supports wildcard patterns like "https://*.example.com"
+func matchesOriginPattern(origin string, pattern string) bool {
+	// Exact match
+	if origin == pattern {
+		return true
+	}
+
+	// Wildcard pattern matching
+	if !matchWildcardPattern(origin, pattern) {
+		return false
+	}
+
+	return true
+}
+
+// matchWildcardPattern performs wildcard pattern matching for origins.
+// Example patterns:
+//   - "https://*.example.com" matches "https://app.example.com"
+//   - "https://*.example.com" matches "https://api.example.com"
+//   - "https://*" matches any HTTPS origin
+func matchWildcardPattern(origin string, pattern string) bool {
+	if !strings.Contains(pattern, "*") {
+		return false
+	}
+
+	// Split pattern on first wildcard
+	parts := strings.SplitN(pattern, "*", 2)
+	prefix := parts[0]
+	suffix := ""
+	if len(parts) > 1 {
+		suffix = parts[1]
+	}
+
+	// Check prefix
+	if prefix != "" && !strings.HasPrefix(origin, prefix) {
+		return false
+	}
+
+	origin = origin[len(prefix):]
+
+	// Check suffix
+	if suffix != "" && !strings.HasSuffix(origin, suffix) {
+		return false
+	}
+
+	return true
 }
 
 // DatabaseConfig holds database configuration

@@ -9,10 +9,10 @@
 - [x] Create configuration merging logic for defaults and user-provided config
 
 ### 1.2 Trusted Origins & CORS
-- [ ] Implement static origins validation
-- [ ] Add dynamic origins function support
-- [ ] Create CORS middleware for HTTP handlers
-- [ ] Add wildcard pattern matching for origins
+- [x] Implement static origins validation
+- [x] Add dynamic origins function support
+- [x] Create CORS middleware for HTTP handlers
+- [x] Add wildcard pattern matching for origins
 
 ### 1.3 Secret Management
 - [x] Implement secret validation (required in production)
@@ -24,7 +24,6 @@
 ### 2.1 Database Adapters
 - [x] Implement SQLite adapter with connection pooling
 - [x] Implement PostgreSQL adapter with connection pooling
-- [ ] Add database connection health checks
 - [ ] Create database migration system for schema updates
 
 ### 2.2 Repository Pattern

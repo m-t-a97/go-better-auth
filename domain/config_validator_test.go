@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -369,4 +370,113 @@ func TestValidateCrosSubDomainCookies_Valid(t *testing.T) {
 
 	err := validateAdvancedConfig(config)
 	assert.NoError(t, err, "should be valid")
+}
+
+// Tests for TrustedOriginsConfig.IsOriginTrusted
+
+func TestTrustedOriginsConfig_IsOriginTrusted_Static(t *testing.T) {
+	config := &TrustedOriginsConfig{
+		StaticOrigins: []string{"https://example.com", "https://app.example.com"},
+	}
+
+	tests := []struct {
+		name     string
+		origin   string
+		expected bool
+	}{
+		{"exact match first", "https://example.com", true},
+		{"exact match second", "https://app.example.com", true},
+		{"no match", "https://other.com", false},
+		{"empty origin", "", false},
+		{"case sensitive", "https://Example.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := config.IsOriginTrusted(tt.origin, nil)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTrustedOriginsConfig_IsOriginTrusted_Dynamic(t *testing.T) {
+	req := &http.Request{}
+
+	config := &TrustedOriginsConfig{
+		StaticOrigins: []string{},
+		DynamicOrigins: func(r *http.Request) []string {
+			return []string{"https://dynamic.example.com"}
+		},
+	}
+
+	tests := []struct {
+		name     string
+		origin   string
+		expected bool
+	}{
+		{"dynamic match", "https://dynamic.example.com", true},
+		{"dynamic no match", "https://other.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := config.IsOriginTrusted(tt.origin, req)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTrustedOriginsConfig_IsOriginTrusted_Wildcard(t *testing.T) {
+	config := &TrustedOriginsConfig{
+		StaticOrigins: []string{
+			"https://*.example.com",
+			"https://app.com",
+		},
+	}
+
+	tests := []struct {
+		name     string
+		origin   string
+		expected bool
+	}{
+		{"wildcard subdomain match", "https://api.example.com", true},
+		{"wildcard subdomain another", "https://app-v2.example.com", true},
+		{"exact match", "https://app.com", true},
+		{"no match", "https://other.com", false},
+		{"wrong domain for wildcard", "https://api.example.org", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := config.IsOriginTrusted(tt.origin, nil)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTrustedOriginsConfig_IsOriginTrusted_Nil(t *testing.T) {
+	var config *TrustedOriginsConfig
+	result := config.IsOriginTrusted("https://example.com", nil)
+	assert.False(t, result)
+}
+
+func TestMatchesOriginPattern(t *testing.T) {
+	tests := []struct {
+		name     string
+		origin   string
+		pattern  string
+		expected bool
+	}{
+		{"exact match", "https://example.com", "https://example.com", true},
+		{"wildcard subdomain", "https://api.example.com", "https://*.example.com", true},
+		{"wildcard full", "https://anything.com", "https://*", true},
+		{"no match", "https://example.com", "https://other.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := matchesOriginPattern(tt.origin, tt.pattern)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

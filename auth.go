@@ -11,6 +11,7 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/handler"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/m-t-a97/go-better-auth/middleware"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
@@ -94,6 +95,7 @@ func (a *Auth) PasswordHasher() *crypto.PasswordHasher {
 
 // Handler returns an http.Handler that implements all authentication endpoints.
 // This handler can be mounted on any HTTP server, including Chi, Echo, and stdlib mux.
+// The handler automatically includes CORS middleware configured with the trusted origins.
 // Usage with stdlib:
 //
 //	http.Handle("/auth/", auth.Handler())
@@ -114,6 +116,14 @@ func (a *Auth) Handler() http.Handler {
 		a.adapter.VerificationRepository(),
 	)
 
-	// Create and return the HTTP handler
-	return handler.NewAuthHandler(service)
+	// Create the base auth handler
+	baseHandler := handler.NewAuthHandler(service)
+
+	// Wrap with CORS middleware if trusted origins are configured
+	if a.config.TrustedOrigins.StaticOrigins != nil || a.config.TrustedOrigins.DynamicOrigins != nil {
+		corsMiddleware := middleware.NewCORSMiddleware(&a.config.TrustedOrigins)
+		return corsMiddleware.Handler(baseHandler)
+	}
+
+	return baseHandler
 }

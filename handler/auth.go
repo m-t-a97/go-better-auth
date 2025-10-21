@@ -1,4 +1,4 @@
-package http
+package handler
 
 import (
 	"encoding/json"
@@ -110,9 +110,10 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // signUpEmail handles POST /auth/sign-up/email
 func (h *AuthHandler) signUpEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Name     string `json:"name,omitempty"`
+		Email    string  `json:"email"`
+		Password string  `json:"password"`
+		Name     string  `json:"name"`
+		Image    *string `json:"image,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -124,6 +125,7 @@ func (h *AuthHandler) signUpEmail(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: req.Password,
 		Name:     req.Name,
+		Image:    req.Image,
 	})
 	if err != nil {
 		h.handleError(w, err)

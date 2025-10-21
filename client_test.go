@@ -10,7 +10,7 @@ import (
 // TestNew_DefaultBaseURL tests that default BaseURL is set when empty
 func TestNew_DefaultBaseURL(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
@@ -30,7 +30,7 @@ func TestNew_DefaultBaseURL(t *testing.T) {
 // TestNew_InvalidDatabaseProvider tests error handling for invalid database provider
 func TestNew_InvalidDatabaseProvider(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "invalid_db",
 			ConnectionString: "some_connection",
 		},
@@ -50,8 +50,8 @@ func TestNew_InvalidDatabaseProvider(t *testing.T) {
 		t.Fatalf("expected AuthError, got %T", err)
 	}
 
-	if authErr.Code != "invalid_database" {
-		t.Fatalf("expected code 'invalid_database', got '%s'", authErr.Code)
+	if authErr.Code != "unsupported_database" {
+		t.Fatalf("expected code 'unsupported_database', got '%s'", authErr.Code)
 	}
 }
 
@@ -62,7 +62,7 @@ func TestNew_UnsupportedDatabaseProvider(t *testing.T) {
 	for _, provider := range testCases {
 		t.Run(provider, func(t *testing.T) {
 			config := &Config{
-				Database: DatabaseConfig{
+				Database: domain.DatabaseConfig{
 					Provider:         provider,
 					ConnectionString: "some_connection",
 				},
@@ -96,7 +96,7 @@ func TestNew_CustomPasswordHasher(t *testing.T) {
 	customHasher := usecase.NewArgon2PasswordHasher()
 
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
@@ -117,12 +117,12 @@ func TestNew_CustomPasswordHasher(t *testing.T) {
 // TestNew_WithGoogleProvider tests initialization with Google OAuth provider
 func TestNew_WithGoogleProvider(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
-		SocialProviders: SocialProvidersConfig{
-			Google: &GoogleProviderConfig{
+		SocialProviders: domain.SocialProvidersConfig{
+			Google: &domain.GoogleProviderConfig{
 				ClientID:     "test_client_id",
 				ClientSecret: "test_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/google/callback",
@@ -142,12 +142,12 @@ func TestNew_WithGoogleProvider(t *testing.T) {
 // TestNew_WithGitHubProvider tests initialization with GitHub OAuth provider
 func TestNew_WithGitHubProvider(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
-		SocialProviders: SocialProvidersConfig{
-			GitHub: &GitHubProviderConfig{
+		SocialProviders: domain.SocialProvidersConfig{
+			GitHub: &domain.GitHubProviderConfig{
 				ClientID:     "test_client_id",
 				ClientSecret: "test_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/github/callback",
@@ -166,12 +166,12 @@ func TestNew_WithGitHubProvider(t *testing.T) {
 // TestNew_WithDiscordProvider tests initialization with Discord OAuth provider
 func TestNew_WithDiscordProvider(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
-		SocialProviders: SocialProvidersConfig{
-			Discord: &DiscordProviderConfig{
+		SocialProviders: domain.SocialProvidersConfig{
+			Discord: &domain.DiscordProviderConfig{
 				ClientID:     "test_client_id",
 				ClientSecret: "test_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/discord/callback",
@@ -190,12 +190,12 @@ func TestNew_WithDiscordProvider(t *testing.T) {
 // TestNew_WithGenericOAuthProvider tests initialization with generic OAuth provider
 func TestNew_WithGenericOAuthProvider(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
-		SocialProviders: SocialProvidersConfig{
-			Generic: map[string]*GenericOAuthConfig{
+		SocialProviders: domain.SocialProvidersConfig{
+			Generic: map[string]*domain.GenericOAuthConfig{
 				"custom": {
 					ClientID:     "test_client_id",
 					ClientSecret: "test_client_secret",
@@ -227,22 +227,22 @@ func TestNew_WithGenericOAuthProvider(t *testing.T) {
 // TestNew_MultipleProviders tests initialization with multiple OAuth providers
 func TestNew_MultipleProviders(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
-		SocialProviders: SocialProvidersConfig{
-			Google: &GoogleProviderConfig{
+		SocialProviders: domain.SocialProvidersConfig{
+			Google: &domain.GoogleProviderConfig{
 				ClientID:     "google_client_id",
 				ClientSecret: "google_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/google/callback",
 			},
-			GitHub: &GitHubProviderConfig{
+			GitHub: &domain.GitHubProviderConfig{
 				ClientID:     "github_client_id",
 				ClientSecret: "github_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/github/callback",
 			},
-			Discord: &DiscordProviderConfig{
+			Discord: &domain.DiscordProviderConfig{
 				ClientID:     "discord_client_id",
 				ClientSecret: "discord_client_secret",
 				RedirectURL:  "http://localhost:3000/auth/discord/callback",
@@ -261,7 +261,7 @@ func TestNew_MultipleProviders(t *testing.T) {
 // TestHandler tests that http.Handler is properly exposed
 func TestHandler(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
@@ -279,7 +279,7 @@ func TestHandler(t *testing.T) {
 // TestAuthUseCase tests that AuthUseCase is properly exposed
 func TestAuthUseCase(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},
@@ -297,7 +297,7 @@ func TestAuthUseCase(t *testing.T) {
 // TestOAuthUseCase tests that OAuthUseCase is properly exposed
 func TestOAuthUseCase(t *testing.T) {
 	config := &Config{
-		Database: DatabaseConfig{
+		Database: domain.DatabaseConfig{
 			Provider:         "postgres",
 			ConnectionString: "invalid_for_test",
 		},

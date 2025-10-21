@@ -24,11 +24,10 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	method := r.Method
 
-	// Extract the endpoint
+	// Extract the endpoint (everything after /auth/)
 	endpoint := ""
-	parts := strings.Split(path[len("/auth/"):], "/")
-	if len(parts) == 2 {
-		endpoint = parts[1]
+	if strings.HasPrefix(path, "/auth/") {
+		endpoint = strings.TrimPrefix(path, "/auth/")
 	}
 
 	switch method {

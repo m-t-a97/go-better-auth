@@ -36,7 +36,7 @@
 - [x] Design and implement session table schema
 - [x] Design and implement account table schema
 - [x] Design and implement verification table schema
-- [ ] Add support for custom fields and additional fields
+<!-- - [ ] Add support for custom fields and additional fields -->
 
 ## 3. User Management
 
@@ -80,7 +80,7 @@
 ### 5.1 Domain Layer
 - [x] Define Account entity for OAuth providers
 - [x] Create AccountRepository interface
-- [ ] Add account linking business rules
+- [ ] Add account linking business rules/
 
 ### 5.2 OAuth Integration
 - [ ] Implement OAuth flow handlers for each provider (Google, GitHub, Discord)

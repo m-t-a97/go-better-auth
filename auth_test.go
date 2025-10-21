@@ -147,10 +147,10 @@ func TestAuth_Handler(t *testing.T) {
 	var _ http.Handler = handler
 
 	// Test basic HTTP request
-	req := httptest.NewRequest("GET", "/auth/me", nil)
+	req := httptest.NewRequest("GET", "/auth/validate", nil)
 	w := httptest.NewRecorder()
 
-	// Handler should respond (even if 404 or error since no session)
+	// Handler should respond (even if 401 since no session token)
 	handler.ServeHTTP(w, req)
 	assert.NotZero(t, w.Code)
 }

@@ -9,10 +9,13 @@ import (
 	"github.com/m-t-a97/go-better-auth/adapter/postgres"
 	"github.com/m-t-a97/go-better-auth/adapter/sqlite"
 	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/session"
 	"github.com/m-t-a97/go-better-auth/handler"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/middleware"
+	"github.com/m-t-a97/go-better-auth/repository/cached"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/m-t-a97/go-better-auth/usecase/ratelimit"
 )
 
 // Auth represents the main authentication system
@@ -125,24 +128,45 @@ func (a *Auth) CipherManager() *crypto.CipherManager {
 // Handler returns an http.Handler that implements all authentication endpoints.
 // This handler can be mounted on any HTTP server, including Chi, Echo, and stdlib mux.
 // The handler automatically includes CORS middleware configured with the trusted origins.
+// If secondary storage is configured, it will be used for session caching and rate limiting.
 func (a *Auth) Handler() http.Handler {
-	// Create the authentication service with repositories from the adapter
+	// Get repositories
+	userRepo := a.adapter.UserRepository()
+	accountRepo := a.adapter.AccountRepository()
+	verificationRepo := a.adapter.VerificationRepository()
+
+	// Wrap session repository with caching if secondary storage is available
+	var sessionRepo session.Repository
+	sessionRepo = a.adapter.SessionRepository()
+	if a.config.SecondaryStorage != nil {
+		sessionRepo = cached.NewSessionRepository(sessionRepo, a.config.SecondaryStorage)
+	}
+
+	// Create the authentication service
 	service := auth.NewService(
 		a.config,
-		a.adapter.UserRepository(),
-		a.adapter.SessionRepository(),
-		a.adapter.AccountRepository(),
-		a.adapter.VerificationRepository(),
+		userRepo,
+		sessionRepo,
+		accountRepo,
+		verificationRepo,
 	)
 
 	// Create the base auth handler
 	baseHandler := handler.NewAuthHandler(service)
 
+	// Apply rate limiting middleware if configured and secondary storage is available
+	var handlerWithMiddleware http.Handler = baseHandler
+	if a.config.RateLimit != nil && a.config.RateLimit.Enabled && a.config.SecondaryStorage != nil {
+		limiter := ratelimit.NewLimiter(a.config.SecondaryStorage)
+		rateLimitMW := middleware.RateLimitMiddleware(a.config, limiter)
+		handlerWithMiddleware = rateLimitMW(baseHandler)
+	}
+
 	// Wrap with CORS middleware if trusted origins are configured
 	if a.config.TrustedOrigins.StaticOrigins != nil || a.config.TrustedOrigins.DynamicOrigins != nil {
 		corsMiddleware := middleware.NewCORSMiddleware(&a.config.TrustedOrigins)
-		return corsMiddleware.Handler(baseHandler)
+		return corsMiddleware.Handler(handlerWithMiddleware)
 	}
 
-	return baseHandler
+	return handlerWithMiddleware
 }

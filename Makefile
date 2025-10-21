@@ -36,11 +36,11 @@ dev: ## Run with hot reload (requires air)
 # Test commands
 test: ## Run tests
 	@echo "Running tests..."
-	@go test -v ./...
+	@CGO_ENABLED=1 go test -v ./...
 
 test-coverage: ## Run tests with coverage
 	@echo "Running tests with coverage..."
-	@go test -v -coverprofile=coverage.out ./...
+	@CGO_ENABLED=1 go test -v -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 

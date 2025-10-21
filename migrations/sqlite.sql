@@ -53,17 +53,20 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_account ON accounts(provider_id, account_id);
 
--- Verifications table (email verification, password reset tokens)
+-- Verifications table (email verification, password reset tokens, email change tokens)
 CREATE TABLE IF NOT EXISTS verifications (
     id VARCHAR(255) PRIMARY KEY,
     identifier VARCHAR(255) NOT NULL,
-    value VARCHAR(512) NOT NULL,
+    token VARCHAR(512) UNIQUE NOT NULL,
+    type VARCHAR(50) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
-CREATE INDEX IF NOT EXISTS idx_verifications_value ON verifications(value);
+CREATE INDEX IF NOT EXISTS idx_verifications_token ON verifications(token);
+CREATE INDEX IF NOT EXISTS idx_verifications_type ON verifications(type);
 CREATE INDEX IF NOT EXISTS idx_verifications_expires_at ON verifications(expires_at);
 
 -- Two Factor Auth table

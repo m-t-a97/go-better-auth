@@ -53,7 +53,7 @@
 - [x] Create HTTP handlers for update and delete operations
 
 ### 3.3 User Features
-- [ ] Implement change email functionality with verification
+- [x] Implement change email functionality with verification
 - [x] Add email verification system integration
 - [ ] Create user deletion with before/after hooks
 

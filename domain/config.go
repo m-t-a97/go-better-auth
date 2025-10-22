@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain/security"
 	"github.com/m-t-a97/go-better-auth/storage"
@@ -378,10 +379,10 @@ type SessionConfig struct {
 	Fields map[string]string
 
 	// ExpiresIn is the expiration time for the session token in seconds (default: 604800 - 7 days)
-	ExpiresIn int
+	ExpiresIn time.Duration
 
 	// UpdateAge is how often the session should be refreshed in seconds (default: 86400 - 1 day)
-	UpdateAge int
+	UpdateAge time.Duration
 
 	// DisableSessionRefresh disables session refresh (default: false)
 	DisableSessionRefresh bool

@@ -3,6 +3,7 @@ package domain
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -172,8 +173,8 @@ func TestValidateEmailPasswordConfig_MaxLessThanMin(t *testing.T) {
 
 func TestValidateSessionConfig_Valid(t *testing.T) {
 	config := &SessionConfig{
-		ExpiresIn: 604800,
-		UpdateAge: 86400,
+		ExpiresIn: 7 * 24 * time.Hour,
+		UpdateAge: 1 * 24 * time.Hour,
 	}
 
 	err := validateSessionConfig(config)
@@ -192,8 +193,8 @@ func TestValidateSessionConfig_InvalidExpiresIn(t *testing.T) {
 
 func TestValidateSessionConfig_UpdateAgeGreaterThanExpiresIn(t *testing.T) {
 	config := &SessionConfig{
-		ExpiresIn: 3600,
-		UpdateAge: 7200, // Greater than ExpiresIn
+		ExpiresIn: 1 * time.Hour,
+		UpdateAge: 2 * time.Hour, // Greater than ExpiresIn
 	}
 
 	err := validateSessionConfig(config)

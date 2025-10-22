@@ -32,8 +32,8 @@ func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {
 			Enabled: true,
 		},
 		Session: &domain.SessionConfig{
-			ExpiresIn: 3600,
-			UpdateAge: 1800,
+			ExpiresIn: 1 * time.Hour,
+			UpdateAge: 30 * time.Minute,
 		},
 	}
 

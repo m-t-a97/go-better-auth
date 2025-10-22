@@ -20,17 +20,17 @@ type AuthMiddleware struct {
 }
 
 // NewAuthMiddleware creates a new auth middleware with default settings
-func NewAuthMiddleware(svc *auth.Service) *AuthMiddleware {
+func NewAuthMiddleware(service *auth.Service) *AuthMiddleware {
 	return &AuthMiddleware{
-		service:    svc,
+		service:    service,
 		cookieName: "session",
 	}
 }
 
 // NewAuthMiddlewareWithCookie creates a new auth middleware with a custom cookie name
-func NewAuthMiddlewareWithCookie(svc *auth.Service, cookieName string) *AuthMiddleware {
+func NewAuthMiddlewareWithCookie(service *auth.Service, cookieName string) *AuthMiddleware {
 	return &AuthMiddleware{
-		service:    svc,
+		service:    service,
 		cookieName: cookieName,
 	}
 }

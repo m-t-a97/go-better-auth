@@ -97,7 +97,7 @@ func TestAuthMiddleware_ValidBearerToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -210,7 +210,7 @@ func TestAuthMiddleware_CookieToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -258,7 +258,7 @@ func TestAuthMiddleware_HandlerFunc(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -308,7 +308,7 @@ func TestOptionalAuthMiddleware_ValidToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -403,7 +403,7 @@ func TestAuthMiddleware_SetSessionTokenInContext(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -449,7 +449,7 @@ func TestAuthMiddleware_ExpiredSession(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	signinResp, err := service.SignIn(&auth.SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &auth.SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})

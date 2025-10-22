@@ -33,11 +33,24 @@ func RateLimitMiddleware(config *domain.Config, limiter *ratelimit.Limiter) func
 			// Get rate limit configuration for this path
 			window, max := getRateLimitConfig(r.URL.Path, config.RateLimit)
 
-			// Generate rate limit key
-			key := ratelimit.GenerateKeyWithWindow(ip, r.URL.Path, window)
+			// Get algorithm (default to fixed-window if not specified)
+			algorithm := config.RateLimit.Algorithm
+			if algorithm == "" {
+				algorithm = "fixed-window"
+			}
 
-			// Check rate limit
-			remaining, allowed, err := limiter.Check(r.Context(), key, window, max)
+			// Generate rate limit key based on algorithm
+			var key string
+			if algorithm == "sliding-window" {
+				// Sliding window uses a base key without time component
+				key = ratelimit.GenerateBaseKey(ip, r.URL.Path)
+			} else {
+				// Fixed window uses a key with time window slot
+				key = ratelimit.GenerateKeyWithWindow(ip, r.URL.Path, window)
+			}
+
+			// Check rate limit using the configured algorithm
+			remaining, allowed, err := limiter.CheckWithAlgorithm(r.Context(), key, window, max, algorithm)
 			if err != nil {
 				slog.Error("rate limit check failed",
 					"error", err,

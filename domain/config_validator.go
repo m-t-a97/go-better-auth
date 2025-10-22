@@ -266,6 +266,13 @@ func validateRateLimitConfig(config *RateLimitOptions) error {
 		return fmt.Errorf("Max must be positive")
 	}
 
+	if config.Algorithm != "" {
+		algorithm := strings.ToLower(config.Algorithm)
+		if algorithm != "fixed-window" && algorithm != "sliding-window" {
+			return fmt.Errorf("invalid algorithm: %s (supported: fixed-window, sliding-window)", algorithm)
+		}
+	}
+
 	if config.Storage != "" {
 		storage := strings.ToLower(config.Storage)
 		if storage != "memory" && storage != "database" && storage != "secondary-storage" {

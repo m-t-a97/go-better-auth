@@ -381,10 +381,11 @@ Verification: &domain.VerificationConfig{
 Configure rate limiting to prevent abuse:
 ```go
 RateLimit: &domain.RateLimitOptions{
-    Enabled: true,
-    Window:  10,   // 10 seconds
-    Max:     100,  // 100 requests per window
-    Storage: "memory",  // "memory", "database", or "secondary-storage"
+    Enabled:   true,
+    Window:    10,   // 10 seconds
+    Max:       100,  // 100 requests per window
+    Algorithm: "fixed-window", // "fixed-window" or "sliding-window"
+    Storage:   "memory",  // "memory", "database", or "secondary-storage"
 
     CustomRules: map[string]domain.RateLimitRule{
         "/api/auth/sign-in": {
@@ -398,6 +399,22 @@ RateLimit: &domain.RateLimitOptions{
     },
 
     ModelName: "rateLimit",
+}
+```
+
+**Rate Limiting Algorithms:**
+
+- **Fixed Window**: Simple counter that resets at window boundaries. Fast and memory-efficient, but can allow bursts of traffic at window boundaries (e.g., 100 requests at 9:59, another 100 at 10:00).
+
+- **Sliding Window**: Uses weighted counts from current and previous windows for smoother rate limiting. Prevents boundary bursts by gradually transitioning between windows. Slightly more computation but provides better distribution of requests over time.
+
+Example with sliding window:
+```go
+RateLimit: &domain.RateLimitOptions{
+    Enabled:   true,
+    Algorithm: "sliding-window",
+    Window:    60,  // 1 minute
+    Max:       100, // 100 requests per minute (smoothly distributed)
 }
 ```
 

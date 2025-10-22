@@ -258,6 +258,43 @@ func TestValidateRateLimitConfig_CustomRulesInvalid(t *testing.T) {
 	assert.Error(t, err, "should be invalid")
 }
 
+func TestValidateRateLimitConfig_ValidAlgorithms(t *testing.T) {
+	testCases := []struct {
+		name      string
+		algorithm string
+	}{
+		{"fixed-window", "fixed-window"},
+		{"sliding-window", "sliding-window"},
+		{"empty default", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := &RateLimitOptions{
+				Enabled:   true,
+				Window:    10,
+				Max:       100,
+				Algorithm: tc.algorithm,
+			}
+
+			err := validateRateLimitConfig(config)
+			assert.NoError(t, err, "algorithm should be valid: %s", tc.algorithm)
+		})
+	}
+}
+
+func TestValidateRateLimitConfig_InvalidAlgorithm(t *testing.T) {
+	config := &RateLimitOptions{
+		Enabled:   true,
+		Window:    10,
+		Max:       100,
+		Algorithm: "invalid-algorithm",
+	}
+
+	err := validateRateLimitConfig(config)
+	assert.Error(t, err, "should reject invalid algorithm")
+}
+
 func TestValidateAdvancedConfig_ValidCookiePrefix(t *testing.T) {
 	config := &AdvancedConfig{
 		CookiePrefix: "auth_",

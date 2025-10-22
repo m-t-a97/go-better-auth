@@ -461,6 +461,12 @@ type RateLimitOptions struct {
 	// Max is the maximum number of requests allowed within the window (default: 100)
 	Max int
 
+	// Algorithm specifies the rate limiting algorithm to use
+	// Options: "fixed-window" (default), "sliding-window"
+	// Fixed window: Simple counter that resets at window boundaries
+	// Sliding window: Weighted counter using current and previous window for smoother limiting
+	Algorithm string
+
 	// CustomRules defines custom rate limit rules for specific paths
 	CustomRules map[string]RateLimitRule
 

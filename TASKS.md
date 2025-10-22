@@ -131,8 +131,7 @@
 ### 8.2 Email Integration
 - [x] Define email sending interface
 - [x] Implement email verification sending
-- [ ] Add email template system
-- [ ] Create verification endpoint handlers
+- [x] Create verification endpoint handlers
 
 ### 8.3 Verification Flow
 - [x] Implement token verification usecase
@@ -144,7 +143,7 @@
 ### 9.1 Rate Limit Engine
 - [x] Implement in-memory rate limiting
 - [x] Add database-backed rate limiting
-- [ ] Create sliding window algorithm
+- [x] Create sliding window algorithm
 - [x] Add custom rules support
 
 ### 9.2 Middleware

@@ -137,6 +137,9 @@ func (c *Config) ApplyDefaults() {
 	if c.RateLimit.Max == 0 {
 		c.RateLimit.Max = DefaultRateLimitMax
 	}
+	if c.RateLimit.Algorithm == "" {
+		c.RateLimit.Algorithm = "fixed-window"
+	}
 	if c.RateLimit.Storage == "" {
 		c.RateLimit.Storage = "memory"
 	}

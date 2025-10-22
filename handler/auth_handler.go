@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -22,12 +23,13 @@ func NewAuthHandler(service *auth.Service) http.Handler {
 // ServeHTTP dispatches requests to appropriate handlers
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	fmt.Println(path)
 	method := r.Method
 
 	// Extract the endpoint (everything after /auth/)
 	endpoint := ""
-	if strings.HasPrefix(path, "/auth/") {
-		endpoint = strings.TrimPrefix(path, "/auth/")
+	if after, ok := strings.CutPrefix(path, "/auth/"); ok {
+		endpoint = after
 	}
 
 	switch method {

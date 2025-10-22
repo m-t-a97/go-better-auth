@@ -55,33 +55,6 @@ deps-update: ## Update dependencies
 	@go get -u ./...
 	@go mod tidy
 
-# Database commands
-migrate-up: ## Run database migrations (PostgreSQL)
-	@echo "Running migrations..."
-	@psql $(DATABASE_URL) -f migrations/postgres.sql
-
-migrate-down: ## Rollback database migrations
-	@echo "Rolling back migrations..."
-	@psql $(DATABASE_URL) -c "DROP TABLE IF EXISTS verifications, accounts, sessions, users CASCADE;"
-
-db-reset: migrate-down migrate-up ## Reset database
-	@echo "Database reset complete"
-
-# Docker commands
-docker-build: ## Build Docker image
-	@echo "Building Docker image..."
-	@docker build -t $(APP_NAME):latest .
-
-docker-run: ## Run Docker container
-	@echo "Running Docker container..."
-	@docker run -p 3000:3000 --env-file .env $(APP_NAME):latest
-
-docker-compose-up: ## Start services with docker-compose
-	@docker-compose up -d
-
-docker-compose-down: ## Stop services with docker-compose
-	@docker-compose down
-
 # Clean commands
 clean: ## Clean build artifacts
 	@echo "Cleaning..."

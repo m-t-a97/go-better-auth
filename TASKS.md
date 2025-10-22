@@ -199,20 +199,16 @@
 
 ### 13.1 Logging System
 - [x] Implement structured logging with slog
-- [ ] Add configurable log levels
-- [ ] Create request context logging
-- [ ] Add color control for console output
 
 ### 13.2 Error Handling
 - [x] Define custom error types
 - [x] Implement error wrapping and chaining
 - [x] Add API error responses
-- [ ] Create custom error handlers
 
-### 13.3 Observability
+<!-- ### 13.3 Observability
 - [ ] Add OpenTelemetry integration
 - [ ] Implement metrics collection
-- [ ] Create health check endpoints
+- [ ] Create health check endpoints -->
 
 ## 14. HTTP Handlers & API
 
@@ -227,11 +223,11 @@
 - [x] Add context utilities for user ID and token extraction
 - [x] Add CORS middleware
 - [x] Implement rate limiting middleware
-- [ ] Add logging middleware
+<!-- - [ ] Add logging middleware -->
 
 ### 14.3 API Design
 - [x] Design RESTful API endpoints
-- [ ] Add OpenAPI/Swagger documentation
+<!-- - [ ] Add OpenAPI/Swagger documentation -->
 - [x] Implement consistent response formats
 - [x] Create error response standardization
 
@@ -243,10 +239,10 @@
 - [x] Create repository interface testing
 - [x] Implement handler testing
 
-## 16. Documentation & Examples
+<!-- ## 16. Documentation & Examples
 
 ### 16.1 API Documentation
 - [ ] Generate OpenAPI specifications
 - [ ] Create API usage examples
 - [ ] Add endpoint documentation
-- [ ] Implement interactive API documentation
+- [ ] Implement interactive API documentation -->

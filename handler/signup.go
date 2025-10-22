@@ -37,7 +37,7 @@ func SignUpHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Call use case
-		resp, err := svc.SignUp(&auth.SignUpRequest{
+		resp, err := svc.SignUp(r.Context(), &auth.SignUpRequest{
 			Email:    req.Email,
 			Password: req.Password,
 			Name:     req.Name,

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func TestSignUp_Valid(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	resp, err := service.SignUp(req)
+	resp, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
@@ -65,7 +66,7 @@ func TestSignUp_DuplicateEmail(t *testing.T) {
 	}
 
 	// First signup should succeed
-	_, err := service.SignUp(req1)
+	_, err := service.SignUp(context.Background(), req1)
 	if err != nil {
 		t.Fatalf("First SignUp failed: %v", err)
 	}
@@ -77,7 +78,7 @@ func TestSignUp_DuplicateEmail(t *testing.T) {
 		Name:     "User 2",
 	}
 
-	_, err = service.SignUp(req2)
+	_, err = service.SignUp(context.Background(), req2)
 	if err == nil {
 		t.Fatal("Expected duplicate email error, got nil")
 	}
@@ -108,7 +109,7 @@ func TestSignUp_InvalidEmail(t *testing.T) {
 				Name:     "Test User",
 			}
 
-			_, err := service.SignUp(req)
+			_, err := service.SignUp(context.Background(), req)
 			if err == nil {
 				t.Fatal("Expected validation error for empty email")
 			}
@@ -142,7 +143,7 @@ func TestSignUp_InvalidPassword(t *testing.T) {
 				Name:     "Test User",
 			}
 
-			_, err := service.SignUp(req)
+			_, err := service.SignUp(context.Background(), req)
 			if err == nil {
 				t.Fatalf("Expected validation error for password %q", tt.password)
 			}
@@ -165,7 +166,7 @@ func TestSignUp_InvalidName(t *testing.T) {
 		Name:     "",
 	}
 
-	_, err := service.SignUp(req)
+	_, err := service.SignUp(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected validation error for empty name")
 	}
@@ -189,7 +190,7 @@ func TestSignUp_PasswordHashing(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(req)
+	user, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
@@ -233,7 +234,7 @@ func TestSignUp_CreatedAccountWithProvider(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(req)
+	user, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
@@ -274,7 +275,7 @@ func TestSignUp_TimestampsSet(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(req)
+	user, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}

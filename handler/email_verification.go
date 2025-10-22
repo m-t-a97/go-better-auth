@@ -33,7 +33,7 @@ func RequestEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Call use case
-		resp, err := svc.RequestEmailVerification(&auth.RequestEmailVerificationRequest{
+		resp, err := svc.RequestEmailVerification(r.Context(), &auth.RequestEmailVerificationRequest{
 			Email: req.Email,
 		})
 		if err != nil {

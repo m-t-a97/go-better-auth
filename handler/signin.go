@@ -41,7 +41,7 @@ func SignInHandler(svc *auth.Service) http.HandlerFunc {
 		userAgent := r.Header.Get("User-Agent")
 
 		// Call use case
-		resp, err := svc.SignIn(&auth.SignInRequest{
+		resp, err := svc.SignIn(r.Context(), &auth.SignInRequest{
 			Email:     req.Email,
 			Password:  req.Password,
 			IPAddress: ipAddress,

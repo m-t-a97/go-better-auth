@@ -90,7 +90,7 @@ func TestAuthMiddleware_ValidBearerToken(t *testing.T) {
 	)
 
 	// Create a user and sign in to get a session
-	signupResp, err := service.SignUp(&auth.SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",
@@ -203,7 +203,7 @@ func TestAuthMiddleware_CookieToken(t *testing.T) {
 	)
 
 	// Create a user and sign in to get a session
-	signupResp, err := service.SignUp(&auth.SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",
@@ -251,7 +251,7 @@ func TestAuthMiddleware_HandlerFunc(t *testing.T) {
 	)
 
 	// Create a user and sign in
-	signupResp, err := service.SignUp(&auth.SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",
@@ -301,7 +301,7 @@ func TestOptionalAuthMiddleware_ValidToken(t *testing.T) {
 	)
 
 	// Create a user and sign in
-	signupResp, err := service.SignUp(&auth.SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",
@@ -396,7 +396,7 @@ func TestAuthMiddleware_SetSessionTokenInContext(t *testing.T) {
 	)
 
 	// Create a user and sign in
-	_, err := service.SignUp(&auth.SignUpRequest{
+	_, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",
@@ -442,7 +442,7 @@ func TestAuthMiddleware_ExpiredSession(t *testing.T) {
 	)
 
 	// Create a user and sign in
-	_, err := service.SignUp(&auth.SignUpRequest{
+	_, err := service.SignUp(context.Background(), &auth.SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "Test User",

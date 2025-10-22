@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -333,7 +334,7 @@ func TestRequestEmailVerification_Valid(t *testing.T) {
 		Email: email,
 	}
 
-	resp, err := service.RequestEmailVerification(req)
+	resp, err := service.RequestEmailVerification(context.Background(), req)
 	if err != nil {
 		t.Fatalf("RequestEmailVerification failed: %v", err)
 	}

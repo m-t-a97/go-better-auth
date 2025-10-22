@@ -226,7 +226,7 @@ func RequestChangeEmailHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Call use case
-		resp, err := svc.RequestChangeEmail(&auth.RequestChangeEmailRequest{
+		resp, err := svc.RequestChangeEmail(r.Context(), &auth.RequestChangeEmailRequest{
 			UserID:   userID,
 			NewEmail: req.NewEmail,
 		})

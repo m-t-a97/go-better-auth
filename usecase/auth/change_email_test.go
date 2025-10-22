@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
@@ -140,11 +142,12 @@ func TestRequestChangeEmail(t *testing.T) {
 			}
 
 			svc := &Service{
+				config:           &domain.Config{},
 				userRepo:         userRepo,
 				verificationRepo: verificationRepo,
 			}
 
-			resp, err := svc.RequestChangeEmail(tt.request)
+			resp, err := svc.RequestChangeEmail(context.Background(), tt.request)
 
 			if tt.expectedError != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.expectedError) {

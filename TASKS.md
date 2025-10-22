@@ -105,7 +105,7 @@
 - [x] Add brute force protection
 - [x] Implement account lockout mechanisms
 - [x] Add secondary storage support for distributed brute force protection
-- [ ] Add password strength validation
+<!-- - [ ] Add password strength validation -->
 
 ## 7. Social Authentication Providers
 
@@ -129,8 +129,8 @@
 - [x] Create secure token storage
 
 ### 8.2 Email Integration
-- [ ] Define email sending interface
-- [ ] Implement email verification sending
+- [x] Define email sending interface
+- [x] Implement email verification sending
 - [ ] Add email template system
 - [ ] Create verification endpoint handlers
 

@@ -1,14 +1,20 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/account"
 	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // SignUpRequest contains the request data for sign up
@@ -24,7 +30,7 @@ type SignUpResponse struct {
 }
 
 // SignUp is the use case for user sign up with email and password
-func (s *Service) SignUp(req *SignUpRequest) (*SignUpResponse, error) {
+func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sign up request cannot be nil")
 	}
@@ -80,7 +86,64 @@ func (s *Service) SignUp(req *SignUpRequest) (*SignUpResponse, error) {
 		return nil, fmt.Errorf("failed to create account: %w", err)
 	}
 
+	// Send verification email if configured
+	if s.config.EmailVerification != nil && s.config.EmailVerification.SendOnSignUp && s.config.EmailVerification.SendVerificationEmail != nil {
+		go s.sendVerificationEmailAsync(ctx, u)
+	}
+
 	return &SignUpResponse{User: u}, nil
+}
+
+// sendVerificationEmailAsync sends a verification email asynchronously
+func (s *Service) sendVerificationEmailAsync(ctx context.Context, u *user.User) {
+	// Generate verification token
+	verificationToken, err := crypto.GenerateToken(32)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate verification token", "user_id", u.ID, "error", err)
+		return
+	}
+
+	// Create verification record
+	v := &verification.Verification{
+		Identifier: u.Email,
+		Token:      verificationToken,
+		Type:       verification.TypeEmailVerification,
+		ExpiresAt:  time.Now().Add(time.Duration(s.config.EmailVerification.ExpiresIn) * time.Second),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := s.verificationRepo.Create(v); err != nil {
+		slog.ErrorContext(ctx, "failed to create email verification token", "user_id", u.ID, "error", err)
+		return
+	}
+
+	// Build verification URL
+	baseURL := s.config.BaseURL
+	basePath := s.config.BasePath
+	if basePath == "" {
+		basePath = "/api/auth"
+	}
+	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
+
+	// Convert user.User to domain.User
+	domainUser := &domain.User{
+		ID:            u.ID,
+		Name:          u.Name,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		Image:         u.Image,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+	}
+
+	// Send email
+	if err := s.config.EmailVerification.SendVerificationEmail(ctx, domainUser, verifyURL, verificationToken); err != nil {
+		slog.ErrorContext(ctx, "failed to send verification email", "user_id", u.ID, "email", u.Email, "error", err)
+		return
+	}
+
+	slog.InfoContext(ctx, "verification email sent", "user_id", u.ID, "email", u.Email)
 }
 
 // Validate validates the sign up request

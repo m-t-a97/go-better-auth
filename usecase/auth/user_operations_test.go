@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 
 	"github.com/m-t-a97/go-better-auth/repository/memory"
@@ -20,7 +21,7 @@ func TestUpdateUser_Valid(t *testing.T) {
 	)
 
 	// First create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -57,7 +58,7 @@ func TestUpdateUser_UpdateImage(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -93,7 +94,7 @@ func TestUpdateUser_UpdateBothNameAndImage(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -188,7 +189,7 @@ func TestUpdateUser_InvalidName(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -220,7 +221,7 @@ func TestUpdateUser_NoChanges(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -258,7 +259,7 @@ func TestDeleteUser_Valid(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -292,7 +293,7 @@ func TestDeleteUser_WithSessions(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -302,7 +303,7 @@ func TestDeleteUser_WithSessions(t *testing.T) {
 	userID := signupResp.User.ID
 
 	// Create a session
-	signinResp, err := service.SignIn(&SignInRequest{
+	signinResp, err := service.SignIn(context.Background(), &SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
@@ -342,7 +343,7 @@ func TestDeleteUser_WithOAuthAccounts(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -428,7 +429,7 @@ func TestDeleteUser_MultipleSessionsDeleted(t *testing.T) {
 	)
 
 	// Create a user
-	signupResp, err := service.SignUp(&SignUpRequest{
+	signupResp, err := service.SignUp(context.Background(), &SignUpRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 		Name:     "John Doe",
@@ -438,13 +439,13 @@ func TestDeleteUser_MultipleSessionsDeleted(t *testing.T) {
 	userID := signupResp.User.ID
 
 	// Create multiple sessions (by signing in multiple times)
-	_, err = service.SignIn(&SignInRequest{
+	_, err = service.SignIn(context.Background(), &SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})
 	require.NoError(t, err)
 
-	_, err = service.SignIn(&SignInRequest{
+	_, err = service.SignIn(context.Background(), &SignInRequest{
 		Email:    "user@example.com",
 		Password: "ValidPassword123!",
 	})

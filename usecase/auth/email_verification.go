@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/url"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
@@ -19,7 +23,7 @@ type RequestEmailVerificationResponse struct {
 }
 
 // RequestEmailVerification is the use case for requesting email verification
-func (s *Service) RequestEmailVerification(req *RequestEmailVerificationRequest) (*RequestEmailVerificationResponse, error) {
+func (s *Service) RequestEmailVerification(ctx context.Context, req *RequestEmailVerificationRequest) (*RequestEmailVerificationResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request email verification request cannot be nil")
 	}
@@ -48,9 +52,47 @@ func (s *Service) RequestEmailVerification(req *RequestEmailVerificationRequest)
 		return nil, fmt.Errorf("failed to create email verification token: %w", err)
 	}
 
+	// Send verification email if configured
+	if s.config.EmailVerification != nil && s.config.EmailVerification.SendVerificationEmail != nil {
+		// Find user by email
+		u, err := s.userRepo.FindByEmail(req.Email)
+		if err == nil && u != nil {
+			// Convert user.User to domain.User
+			domainUser := &domain.User{
+				ID:            u.ID,
+				Name:          u.Name,
+				Email:         u.Email,
+				EmailVerified: u.EmailVerified,
+				Image:         u.Image,
+				CreatedAt:     u.CreatedAt,
+				UpdatedAt:     u.UpdatedAt,
+			}
+			go s.sendVerificationEmailForRequestAsync(ctx, domainUser, verificationToken)
+		}
+	}
+
 	return &RequestEmailVerificationResponse{
 		Verification: v,
 	}, nil
+}
+
+// sendVerificationEmailForRequestAsync sends a verification email asynchronously for manual verification requests
+func (s *Service) sendVerificationEmailForRequestAsync(ctx context.Context, u *domain.User, verificationToken string) {
+	// Build verification URL
+	baseURL := s.config.BaseURL
+	basePath := s.config.BasePath
+	if basePath == "" {
+		basePath = "/api/auth"
+	}
+	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
+
+	// Send email
+	if err := s.config.EmailVerification.SendVerificationEmail(ctx, u, verifyURL, verificationToken); err != nil {
+		slog.ErrorContext(ctx, "failed to send verification email", "user_id", u.ID, "email", u.Email, "error", err)
+		return
+	}
+
+	slog.InfoContext(ctx, "verification email sent", "user_id", u.ID, "email", u.Email)
 }
 
 // VerifyEmailRequest contains the request data for verifying an email

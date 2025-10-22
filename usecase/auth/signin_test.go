@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
@@ -32,7 +33,7 @@ func TestSignIn_Valid(t *testing.T) {
 	}
 
 	service := NewService(
-		createTestConfig(),userRepo, sessionRepo, accountRepo, verificationRepo)
+		createTestConfig(), userRepo, sessionRepo, accountRepo, verificationRepo)
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -41,7 +42,7 @@ func TestSignIn_Valid(t *testing.T) {
 		UserAgent: "Mozilla/5.0",
 	}
 
-	resp, err := service.SignIn(req)
+	resp, err := service.SignIn(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignIn failed: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestSignIn_InvalidPassword(t *testing.T) {
 	accountRepo.Create(testAccount)
 
 	service := NewService(
-		createTestConfig(),userRepo, memory.NewSessionRepository(), accountRepo, memory.NewVerificationRepository())
+		createTestConfig(), userRepo, memory.NewSessionRepository(), accountRepo, memory.NewVerificationRepository())
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -87,7 +88,7 @@ func TestSignIn_InvalidPassword(t *testing.T) {
 		UserAgent: "Mozilla/5.0",
 	}
 
-	_, err := service.SignIn(req)
+	_, err := service.SignIn(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error for invalid password, got nil")
 	}
@@ -109,7 +110,7 @@ func TestSignIn_UserNotFound(t *testing.T) {
 		UserAgent: "Mozilla/5.0",
 	}
 
-	_, err := service.SignIn(req)
+	_, err := service.SignIn(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error for non-existent user, got nil")
 	}
@@ -123,7 +124,7 @@ func TestSignIn_AccountNotFound(t *testing.T) {
 	userRepo.Create(testUser)
 
 	service := NewService(
-		createTestConfig(),userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), memory.NewVerificationRepository())
+		createTestConfig(), userRepo, memory.NewSessionRepository(), memory.NewAccountRepository(), memory.NewVerificationRepository())
 
 	req := &SignInRequest{
 		Email:     testUser.Email,
@@ -132,7 +133,7 @@ func TestSignIn_AccountNotFound(t *testing.T) {
 		UserAgent: "Mozilla/5.0",
 	}
 
-	_, err := service.SignIn(req)
+	_, err := service.SignIn(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error for user without account, got nil")
 	}

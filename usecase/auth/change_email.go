@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/url"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
@@ -22,7 +26,7 @@ type RequestChangeEmailResponse struct {
 
 // RequestChangeEmail is the use case for requesting an email change
 // It generates a verification token that must be confirmed before the email is changed
-func (s *Service) RequestChangeEmail(req *RequestChangeEmailRequest) (*RequestChangeEmailResponse, error) {
+func (s *Service) RequestChangeEmail(ctx context.Context, req *RequestChangeEmailRequest) (*RequestChangeEmailResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request change email request cannot be nil")
 	}
@@ -86,9 +90,44 @@ func (s *Service) RequestChangeEmail(req *RequestChangeEmailRequest) (*RequestCh
 		return nil, fmt.Errorf("failed to create email change verification token: %w", err)
 	}
 
+	// Send verification email if configured
+	if s.config.EmailVerification != nil && s.config.EmailVerification.SendVerificationEmail != nil {
+		go s.sendChangeEmailVerificationAsync(ctx, existingUser, req.NewEmail, verificationToken)
+	}
+
 	return &RequestChangeEmailResponse{
 		Verification: v,
 	}, nil
+}
+
+// sendChangeEmailVerificationAsync sends a verification email for email change asynchronously
+func (s *Service) sendChangeEmailVerificationAsync(ctx context.Context, u *user.User, newEmail string, verificationToken string) {
+	// Build verification URL
+	baseURL := s.config.BaseURL
+	basePath := s.config.BasePath
+	if basePath == "" {
+		basePath = "/api/auth"
+	}
+	verifyURL := baseURL + basePath + "/confirm-change-email?token=" + url.QueryEscape(verificationToken)
+
+	// Convert user.User to domain.User
+	domainUser := &domain.User{
+		ID:            u.ID,
+		Name:          u.Name,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		Image:         u.Image,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+	}
+
+	// Send email to new email address
+	if err := s.config.EmailVerification.SendVerificationEmail(ctx, domainUser, verifyURL, verificationToken); err != nil {
+		slog.ErrorContext(ctx, "failed to send change email verification", "user_id", u.ID, "new_email", newEmail, "error", err)
+		return
+	}
+
+	slog.InfoContext(ctx, "change email verification sent", "user_id", u.ID, "new_email", newEmail)
 }
 
 // ConfirmChangeEmailRequest contains the request data for confirming an email change

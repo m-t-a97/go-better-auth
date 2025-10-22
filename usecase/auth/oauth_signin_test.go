@@ -85,7 +85,7 @@ func TestOAuthSignIn_ExistingUser(t *testing.T) {
 		Name:     "Existing User",
 	}
 
-	signupResp, err := service.SignUp(signupReq)
+	signupResp, err := service.SignUp(context.Background(), signupReq)
 	require.NoError(t, err)
 
 	// OAuth signin with existing user

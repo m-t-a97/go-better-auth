@@ -1,12 +1,17 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/session"
+	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
@@ -24,7 +29,7 @@ type SignInResponse struct {
 }
 
 // SignIn is the use case for user sign in with email and password
-func (s *Service) SignIn(req *SignInRequest) (*SignInResponse, error) {
+func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sign in request cannot be nil")
 	}
@@ -107,6 +112,53 @@ func (s *Service) SignIn(req *SignInRequest) (*SignInResponse, error) {
 	// Save session
 	if err := s.sessionRepo.Create(sess); err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	// Send verification email if configured and email not verified
+	if s.config.EmailVerification != nil && s.config.EmailVerification.SendOnSignIn && !u.EmailVerified && s.config.EmailVerification.SendVerificationEmail != nil {
+		// Generate verification token
+		verificationToken, err := crypto.GenerateToken(32)
+		if err == nil {
+			// Create verification record
+			v := &verification.Verification{
+				Identifier: u.Email,
+				Token:      verificationToken,
+				Type:       verification.TypeEmailVerification,
+				ExpiresAt:  time.Now().Add(time.Duration(s.config.EmailVerification.ExpiresIn) * time.Second),
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			}
+
+			if err := s.verificationRepo.Create(v); err == nil {
+				// Build verification URL
+				baseURL := s.config.BaseURL
+				basePath := s.config.BasePath
+				if basePath == "" {
+					basePath = "/api/auth"
+				}
+				verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
+
+				// Convert user.User to domain.User
+				domainUser := &domain.User{
+					ID:            u.ID,
+					Name:          u.Name,
+					Email:         u.Email,
+					EmailVerified: u.EmailVerified,
+					Image:         u.Image,
+					CreatedAt:     u.CreatedAt,
+					UpdatedAt:     u.UpdatedAt,
+				}
+
+				// Send email asynchronously
+				go func() {
+					if err := s.config.EmailVerification.SendVerificationEmail(ctx, domainUser, verifyURL, verificationToken); err != nil {
+						slog.ErrorContext(ctx, "failed to send verification email on sign in", "user_id", u.ID, "email", u.Email, "error", err)
+						return
+					}
+					slog.InfoContext(ctx, "verification email sent on sign in", "user_id", u.ID, "email", u.Email)
+				}()
+			}
+		}
 	}
 
 	return &SignInResponse{Session: sess}, nil

@@ -186,3 +186,69 @@ func (a *Auth) Handler() http.Handler {
 
 	return handlerWithMiddleware
 }
+
+// authService creates and returns the authentication service
+// This is used internally by middleware factory methods
+func (a *Auth) authService() *auth.Service {
+	// Get repositories
+	userRepo := a.adapter.UserRepository()
+	accountRepo := a.adapter.AccountRepository()
+	verificationRepo := a.adapter.VerificationRepository()
+
+	// Wrap session repository with caching if secondary storage is available
+	var sessionRepo session.Repository
+	sessionRepo = a.adapter.SessionRepository()
+	if a.config.SecondaryStorage != nil {
+		sessionRepo = cached.NewSessionRepository(sessionRepo, a.config.SecondaryStorage)
+	}
+
+	// Create the authentication service
+	service := auth.NewService(
+		a.config,
+		userRepo,
+		sessionRepo,
+		accountRepo,
+		verificationRepo,
+	)
+
+	// Initialize brute force protection if enabled
+	if a.config.BruteForce != nil && a.config.BruteForce.Enabled {
+		var bruteForceRepo security.BruteForceRepository
+		if a.config.BruteForce.UseSecondaryStorage && a.config.SecondaryStorage != nil {
+			bruteForceRepo = secondary.NewSecondaryStorageBruteForceRepository(a.config.SecondaryStorage)
+		} else {
+			bruteForceRepo = memory.NewInMemoryBruteForceRepository()
+		}
+		bruteForceService := security_protection.NewBruteForceService(bruteForceRepo, a.config.BruteForce)
+		service.SetBruteForceService(bruteForceService)
+	}
+
+	return service
+}
+
+// AuthMiddleware returns a ready-to-use authentication middleware
+// It validates session tokens and extracts user IDs from requests
+// The middleware requires valid authentication (returns 401 if missing or invalid)
+func (a *Auth) AuthMiddleware() *middleware.AuthMiddleware {
+	return middleware.NewAuthMiddleware(a.authService())
+}
+
+// AuthMiddlewareWithCookie returns a ready-to-use authentication middleware with a custom cookie name
+// It validates session tokens and extracts user IDs from requests
+// The middleware requires valid authentication (returns 401 if missing or invalid)
+func (a *Auth) AuthMiddlewareWithCookie(cookieName string) *middleware.AuthMiddleware {
+	return middleware.NewAuthMiddlewareWithCookie(a.authService(), cookieName)
+}
+
+// OptionalAuthMiddleware returns a ready-to-use optional authentication middleware
+// It validates session tokens if present, but doesn't require them
+// Requests without tokens or with invalid tokens are still allowed
+func (a *Auth) OptionalAuthMiddleware() *middleware.OptionalAuthMiddleware {
+	return middleware.NewOptionalAuthMiddleware(a.authService())
+}
+
+// OptionalAuthMiddlewareWithCookie returns a ready-to-use optional authentication middleware with a custom cookie name
+// It validates session tokens if present, but doesn't require them
+func (a *Auth) OptionalAuthMiddlewareWithCookie(cookieName string) *middleware.OptionalAuthMiddleware {
+	return middleware.NewOptionalAuthMiddlewareWithCookie(a.authService(), cookieName)
+}

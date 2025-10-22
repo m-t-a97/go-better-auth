@@ -8,8 +8,16 @@ This document provides comprehensive examples of configuring Go Better Auth usin
 - [Email Verification](#email-verification)
 - [Social Providers](#social-providers)
 - [Session Configuration](#session-configuration)
+- [User Management](#user-management)
+- [Account Management](#account-management)
+- [Verification Management](#verification-management)
+- [Brute Force Protection](#brute-force-protection)
 - [Advanced Configuration](#advanced-configuration)
 - [Rate Limiting](#rate-limiting)
+- [Logging](#logging)
+- [Plugins](#plugins)
+- [API Error Handling](#api-error-handling)
+- [Request Hooks](#request-hooks)
 - [Custom Password Hashing](#custom-password-hashing)
 - [Database Hooks](#database-hooks)
 - [Complete Example](#complete-example)
@@ -59,17 +67,16 @@ auth, err := gobetterauth.New(&domain.Config{
 	
 	EmailAndPassword: &domain.EmailPasswordConfig{
 		Enabled:                  true,
+		DisableSignUp:            false,
 		RequireEmailVerification: true,
 		MinPasswordLength:        10,
 		MaxPasswordLength:        128,
 		AutoSignIn:               true,
-		
 		SendResetPassword: func(ctx context.Context, user *domain.User, url string, token string) error {
 			// Send password reset email
 			log.Printf("Password reset for %s: %s", user.Email, url)
 			return nil
 		},
-		
 		ResetPasswordTokenExpiresIn: 3600, // 1 hour
 	},
 })
@@ -130,25 +137,10 @@ auth, err := gobetterauth.New(&domain.Config{
 			RedirectURI:  "https://example.com/api/auth/callback/github",
 		},
 		
-		// Generic OAuth provider
-		Generic: map[string]*domain.GenericOAuthConfig{
-			"custom": {
-				ClientID:     "custom_client_id",
-				ClientSecret: "custom_client_secret",
-				RedirectURI:  "https://example.com/api/auth/callback/custom",
-				AuthURL:      "https://custom.com/oauth/authorize",
-				TokenURL:     "https://custom.com/oauth/token",
-				UserInfoURL:  "https://custom.com/oauth/userinfo",
-				Scopes:       []string{"openid", "profile", "email"},
-				
-				UserInfoMapper: func(data map[string]any) *domain.OAuthUserInfo {
-					return &domain.OAuthUserInfo{
-						ID:    data["sub"].(string),
-						Email: data["email"].(string),
-						Name:  data["name"].(string),
-					}
-				},
-			},
+		Discord: &domain.DiscordProviderConfig{
+			ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
+			ClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
+			RedirectURI:  "https://example.com/api/auth/callback/discord",
 		},
 	},
 })
@@ -184,6 +176,242 @@ auth, err := gobetterauth.New(&domain.Config{
 		
 		StoreSessionInDatabase:    true,
 		PreserveSessionInDatabase: false,
+	},
+})
+```
+
+## User Management
+
+Configure user model customization and account management features:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	User: &domain.UserConfig{
+		ModelName: "user",
+		Fields: map[string]string{
+			"email": "email_address",  // Custom field mapping
+		},
+		
+		AdditionalFields: map[string]domain.AdditionalField{
+			"phone": {Type: "string"},
+		},
+		
+		ChangeEmail: &domain.ChangeEmailConfig{
+			Enabled: true,
+			SendChangeEmailVerification: func(ctx context.Context, user *domain.User, newEmail string, url string, token string) error {
+				// Implement email sending logic
+				log.Printf("Change email for %s to %s: %s", user.Email, newEmail, url)
+				return nil
+			},
+		},
+		
+		DeleteUser: &domain.DeleteUserConfig{
+			Enabled: true,
+			SendDeleteAccountVerification: func(ctx context.Context, user *domain.User, url string, token string) error {
+				// Implement email sending logic
+				log.Printf("Delete account for %s: %s", user.Email, url)
+				return nil
+			},
+			BeforeDelete: func(ctx context.Context, user *domain.User) error {
+				// Pre-deletion logic
+				log.Println("Deleting user account...")
+				return nil
+			},
+			AfterDelete: func(ctx context.Context, user *domain.User) error {
+				// Post-deletion logic
+				log.Println("User account deleted successfully")
+				return nil
+			},
+		},
+	},
+})
+```
+
+## Account Management
+
+Configure account linking and OAuth settings:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	Account: &domain.AccountConfig{
+		ModelName: "account",
+		Fields: map[string]string{
+			"userId": "user_id",
+		},
+		
+		EncryptOAuthTokens:   true,
+		UpdateAccountOnSignIn: true,
+		
+		AccountLinking: &domain.AccountLinkingConfig{
+			Enabled:             true,
+			TrustedProviders:    []string{"google", "github"},
+			AllowDifferentEmails: false,
+			AllowUnlinkingAll:    false,
+		},
+	},
+})
+```
+
+## Verification Management
+
+Configure verification token storage:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	Verification: &domain.VerificationConfig{
+		ModelName: "verification",
+		Fields: map[string]string{
+			"token": "verification_token",
+		},
+		DisableCleanup: false,
+	},
+})
+```
+
+## Brute Force Protection
+
+Configure brute force protection:
+
+```go
+import (
+	gobetterauth "github.com/m-t-a97/go-better-auth"
+	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/security"
+)
+
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	BruteForce: &security.BruteForceConfig{
+		Enabled:          true,
+		MaxAttempts:      5,
+		Window:           900,    // 15 minutes
+		BlockDuration:    3600,   // 1 hour
+		CleanupInterval:  3600,   // 1 hour
+		Storage:          "memory",
+	},
+})
+```
+
+## Logging
+
+Configure logging behavior:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	Logger: &domain.LoggerConfig{
+		Disabled:     false,
+		DisableColors: false,
+		Level:        domain.LogLevelInfo,  // "debug", "info", "warn", "error"
+		
+		Log: func(level domain.LogLevel, message string, args ...interface{}) {
+			// Custom logging implementation
+			log.Printf("[%s] %s", level, fmt.Sprintf(message, args...))
+		},
+	},
+})
+```
+
+## Plugins
+
+Extend functionality with plugins:
+
+```go
+// Define a custom plugin
+type CustomPlugin struct{}
+
+func (p *CustomPlugin) Name() string {
+	return "custom"
+}
+
+func (p *CustomPlugin) Initialize(config interface{}) error {
+	// Initialize plugin
+	return nil
+}
+
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	Plugins: []domain.Plugin{
+		&CustomPlugin{},
+	},
+})
+```
+
+## API Error Handling
+
+Configure custom error handling:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	OnAPIError: &domain.OnAPIErrorConfig{
+		Throw:    false,
+		OnError: func(err error, ctx context.Context) {
+			// Custom error handling logic
+			log.Printf("API Error: %v", err)
+		},
+		ErrorURL: "/api/auth/error",
+	},
+})
+```
+
+## Request Hooks
+
+Add request lifecycle hooks:
+
+```go
+auth, err := gobetterauth.New(&domain.Config{
+	Database: domain.DatabaseConfig{
+		Provider:          "postgres",
+		ConnectionString: os.Getenv("DATABASE_URL"),
+	},
+	
+	Hooks: &domain.HooksConfig{
+		Before: func(ctx *domain.RequestContext) error {
+			// Pre-request logic
+			log.Printf("Request: %s %s", ctx.Method, ctx.Path)
+			return nil
+		},
+		After: func(ctx *domain.RequestContext) error {
+			// Post-request logic
+			log.Printf("Response: %s %s", ctx.Method, ctx.Path)
+			return nil
+		},
+	},
+	
+	DisabledPaths: []string{
+		"/api/auth/debug",  // Disable specific paths
 	},
 })
 ```
@@ -246,10 +474,11 @@ auth, err := gobetterauth.New(&domain.Config{
 	},
 	
 	RateLimit: &domain.RateLimitOptions{
-		Enabled: true,
-		Window:  60,   // 60 seconds
-		Max:     100,  // 100 requests
-		Storage: "memory",
+		Enabled:  true,
+		Window:   60,   // 60 seconds
+		Max:      100,  // 100 requests
+		Algorithm: "fixed-window", // "fixed-window" or "sliding-window"
+		Storage:  "memory",
 		
 		// Custom rules for specific paths
 		CustomRules: map[string]domain.RateLimitRule{
@@ -391,6 +620,7 @@ func main() {
 		
 		EmailAndPassword: &domain.EmailPasswordConfig{
 			Enabled:                      true,
+			DisableSignUp:                false,
 			RequireEmailVerification:     true,
 			MinPasswordLength:            8,
 			MaxPasswordLength:            128,
@@ -414,6 +644,11 @@ func main() {
 				ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 				RedirectURI:  "https://example.com/api/auth/callback/github",
 			},
+			Discord: &domain.DiscordProviderConfig{
+				ClientID:     os.Getenv("DISCORD_CLIENT_ID"),
+				ClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
+				RedirectURI:  "https://example.com/api/auth/callback/discord",
+			},
 		},
 		
 		Session: &domain.SessionConfig{
@@ -427,10 +662,11 @@ func main() {
 		},
 		
 		RateLimit: &domain.RateLimitOptions{
-			Enabled: true,
-			Window:  60,
-			Max:     100,
-			Storage: "memory",
+			Enabled:   true,
+			Window:    60,
+			Max:       100,
+			Algorithm: "fixed-window",
+			Storage:   "memory",
 			CustomRules: map[string]domain.RateLimitRule{
 				"/api/auth/sign-in": {Window: 300, Max: 5},
 				"/api/auth/sign-up": {Window: 3600, Max: 3},
@@ -446,6 +682,36 @@ func main() {
 				Enabled: true,
 				Domain:  ".example.com",
 			},
+		},
+		
+		User: &domain.UserConfig{
+			ChangeEmail: &domain.ChangeEmailConfig{
+				Enabled: true,
+				SendChangeEmailVerification: func(ctx context.Context, user *domain.User, newEmail string, url string, token string) error {
+					log.Printf("Send change email to %s: %s", user.Email, url)
+					return nil
+				},
+			},
+			DeleteUser: &domain.DeleteUserConfig{
+				Enabled: true,
+				SendDeleteAccountVerification: func(ctx context.Context, user *domain.User, url string, token string) error {
+					log.Printf("Send delete account to %s: %s", user.Email, url)
+					return nil
+				},
+			},
+		},
+		
+		Account: &domain.AccountConfig{
+			EncryptOAuthTokens:   true,
+			UpdateAccountOnSignIn: true,
+			AccountLinking: &domain.AccountLinkingConfig{
+				Enabled:          true,
+				TrustedProviders: []string{"google", "github"},
+			},
+		},
+		
+		Verification: &domain.VerificationConfig{
+			DisableCleanup: false,
 		},
 		
 		Logger: &domain.LoggerConfig{
@@ -485,6 +751,9 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
+
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
 ```
 
 ## Default Values
@@ -503,8 +772,6 @@ Go Better Auth applies sensible defaults:
 - **Database.Casing**: `snake`
 
 All these can be overridden in your configuration.
-
-````
 
 ## HTTP Router Integration
 
@@ -689,4 +956,4 @@ func main() {
 }
 ```
 
-
+---

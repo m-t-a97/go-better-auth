@@ -9,7 +9,7 @@ import (
 )
 
 func TestLimiter_Check_AllowsRequests(t *testing.T) {
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := NewLimiter(secondary)
 	ctx := context.Background()
 
@@ -46,7 +46,7 @@ func TestLimiter_Check_AllowsRequests(t *testing.T) {
 }
 
 func TestLimiter_Check_BlocksExcessRequests(t *testing.T) {
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := NewLimiter(secondary)
 	ctx := context.Background()
 
@@ -79,7 +79,7 @@ func TestLimiter_Check_BlocksExcessRequests(t *testing.T) {
 }
 
 func TestLimiter_Check_ResetAfterWindow(t *testing.T) {
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := NewLimiter(secondary)
 	ctx := context.Background()
 
@@ -124,7 +124,7 @@ func TestLimiter_Check_ResetAfterWindow(t *testing.T) {
 }
 
 func TestLimiter_Reset(t *testing.T) {
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := NewLimiter(secondary)
 	ctx := context.Background()
 
@@ -171,7 +171,7 @@ func TestLimiter_Reset(t *testing.T) {
 }
 
 func TestLimiter_GetCount(t *testing.T) {
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := NewLimiter(secondary)
 	ctx := context.Background()
 

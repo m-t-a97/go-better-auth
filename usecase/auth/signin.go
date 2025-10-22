@@ -34,26 +34,54 @@ func (s *Service) SignIn(req *SignInRequest) (*SignInResponse, error) {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
+	// Check brute force protection
+	if s.bruteForceService != nil {
+		if err := s.bruteForceService.CheckLoginAttempt(req.Email, req.IPAddress); err != nil {
+			return nil, fmt.Errorf("account is temporarily locked")
+		}
+	}
+
 	// Find user by email
 	u, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
+		// Record failed attempt on brute force
+		if s.bruteForceService != nil {
+			_ = s.bruteForceService.RecordFailedAttempt(req.Email, req.IPAddress)
+		}
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
 	// Find account for this user (credential provider)
 	acc, err := s.accountRepo.FindByUserIDAndProvider(u.ID, "credential")
 	if err != nil {
+		// Record failed attempt on brute force
+		if s.bruteForceService != nil {
+			_ = s.bruteForceService.RecordFailedAttempt(req.Email, req.IPAddress)
+		}
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
 	// Verify password
 	if acc.Password == nil || *acc.Password == "" {
+		// Record failed attempt on brute force
+		if s.bruteForceService != nil {
+			_ = s.bruteForceService.RecordFailedAttempt(req.Email, req.IPAddress)
+		}
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
 	ok, err := s.passwordHasher.Verify(req.Password, *acc.Password)
 	if err != nil || !ok {
+		// Record failed attempt on brute force
+		if s.bruteForceService != nil {
+			_ = s.bruteForceService.RecordFailedAttempt(req.Email, req.IPAddress)
+		}
 		return nil, fmt.Errorf("invalid email or password")
+	}
+
+	// Clear attempts on successful login
+	if s.bruteForceService != nil {
+		_ = s.bruteForceService.ClearAttempts(req.Email)
 	}
 
 	// Generate session token

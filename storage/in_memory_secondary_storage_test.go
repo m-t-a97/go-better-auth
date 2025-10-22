@@ -7,7 +7,7 @@ import (
 )
 
 func TestMemorySecondaryStorage_SetAndGet(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	key := "test-key"
@@ -31,7 +31,7 @@ func TestMemorySecondaryStorage_SetAndGet(t *testing.T) {
 }
 
 func TestMemorySecondaryStorage_SetWithTTL(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	key := "test-key"
@@ -63,7 +63,7 @@ func TestMemorySecondaryStorage_SetWithTTL(t *testing.T) {
 }
 
 func TestMemorySecondaryStorage_Delete(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	key := "test-key"
@@ -89,7 +89,7 @@ func TestMemorySecondaryStorage_Delete(t *testing.T) {
 }
 
 func TestMemorySecondaryStorage_CleanExpired(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	// Set items with different TTLs
@@ -118,7 +118,7 @@ func TestMemorySecondaryStorage_CleanExpired(t *testing.T) {
 }
 
 func TestMemorySecondaryStorage_Clear(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	// Set multiple items
@@ -136,7 +136,7 @@ func TestMemorySecondaryStorage_Clear(t *testing.T) {
 }
 
 func TestMemorySecondaryStorage_Overwrite(t *testing.T) {
-	storage := NewMemorySecondaryStorage()
+	storage := NewInMemorySecondaryStorage()
 	ctx := context.Background()
 
 	key := "test-key"

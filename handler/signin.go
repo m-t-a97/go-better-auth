@@ -57,9 +57,13 @@ func SignInHandler(svc *auth.Service) http.HandlerFunc {
 				ErrorResponse(w, http.StatusUnauthorized, "invalid email or password")
 			case "account not found":
 				ErrorResponse(w, http.StatusUnauthorized, "invalid email or password")
+			case "account is temporarily locked":
+				ErrorResponse(w, http.StatusTooManyRequests, "too many login attempts, try again later")
 			default:
-				// Check if it contains password-related keywords
-				if strings.Contains(errMsg, "password") || strings.Contains(errMsg, "verify") {
+				// Check if it contains account lockout keywords
+				if strings.Contains(errMsg, "locked") {
+					ErrorResponse(w, http.StatusTooManyRequests, "too many login attempts, try again later")
+				} else if strings.Contains(errMsg, "password") || strings.Contains(errMsg, "verify") {
 					ErrorResponse(w, http.StatusUnauthorized, "invalid email or password")
 				} else {
 					ErrorResponse(w, http.StatusInternalServerError, "internal server error")

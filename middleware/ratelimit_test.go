@@ -18,7 +18,7 @@ func TestRateLimitMiddleware_Disabled(t *testing.T) {
 		},
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 
@@ -46,7 +46,7 @@ func TestRateLimitMiddleware_AllowsRequests(t *testing.T) {
 		},
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 
@@ -78,7 +78,7 @@ func TestRateLimitMiddleware_BlocksExcessRequests(t *testing.T) {
 		},
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 
@@ -127,7 +127,7 @@ func TestRateLimitMiddleware_CustomRules(t *testing.T) {
 		},
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 
@@ -170,7 +170,7 @@ func TestRateLimitMiddleware_DifferentIPs(t *testing.T) {
 		},
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 
@@ -279,7 +279,7 @@ func TestRateLimitMiddleware_NilConfig(t *testing.T) {
 		RateLimit: nil,
 	}
 
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	limiter := ratelimit.NewLimiter(secondary)
 	middleware := RateLimitMiddleware(config, limiter)
 

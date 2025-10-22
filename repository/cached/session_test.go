@@ -13,7 +13,7 @@ import (
 
 func TestCachedSessionRepository_Create(t *testing.T) {
 	primary := memory.NewSessionRepository()
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	repo := NewSessionRepository(primary, secondary)
 
 	sess := &session.Session{
@@ -42,7 +42,7 @@ func TestCachedSessionRepository_Create(t *testing.T) {
 
 func TestCachedSessionRepository_FindByToken_CacheHit(t *testing.T) {
 	primary := memory.NewSessionRepository()
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	repo := NewSessionRepository(primary, secondary)
 
 	sess := &session.Session{
@@ -85,7 +85,7 @@ func TestCachedSessionRepository_FindByToken_CacheHit(t *testing.T) {
 
 func TestCachedSessionRepository_Delete(t *testing.T) {
 	primary := memory.NewSessionRepository()
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	repo := NewSessionRepository(primary, secondary)
 
 	sess := &session.Session{
@@ -122,7 +122,7 @@ func TestCachedSessionRepository_Delete(t *testing.T) {
 
 func TestCachedSessionRepository_Update(t *testing.T) {
 	primary := memory.NewSessionRepository()
-	secondary := storage.NewMemorySecondaryStorage()
+	secondary := storage.NewInMemorySecondaryStorage()
 	repo := NewSessionRepository(primary, secondary)
 
 	sess := &session.Session{

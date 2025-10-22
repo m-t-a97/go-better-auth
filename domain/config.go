@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/m-t-a97/go-better-auth/domain/security"
 	"github.com/m-t-a97/go-better-auth/storage"
 )
 
@@ -63,6 +64,9 @@ type Config struct {
 
 	// RateLimit configuration
 	RateLimit *RateLimitOptions
+
+	// BruteForce configuration
+	BruteForce *security.BruteForceConfig
 
 	// Advanced configuration options
 	Advanced *AdvancedConfig

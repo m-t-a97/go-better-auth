@@ -16,7 +16,7 @@ import (
 
 func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {
 	// Create secondary storage
-	secondaryStorage := storage.NewMemorySecondaryStorage()
+	secondaryStorage := storage.NewInMemorySecondaryStorage()
 
 	// Create auth instance with secondary storage
 	config := &domain.Config{
@@ -104,7 +104,7 @@ func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {
 
 func TestAuth_WithSecondaryStorage_RateLimiting(t *testing.T) {
 	// Create secondary storage
-	secondaryStorage := storage.NewMemorySecondaryStorage()
+	secondaryStorage := storage.NewInMemorySecondaryStorage()
 
 	// Create auth instance with rate limiting
 	config := &domain.Config{
@@ -173,7 +173,7 @@ func TestAuth_WithSecondaryStorage_RateLimiting(t *testing.T) {
 
 func TestAuth_WithSecondaryStorage_CustomRateLimits(t *testing.T) {
 	// Create secondary storage
-	secondaryStorage := storage.NewMemorySecondaryStorage()
+	secondaryStorage := storage.NewInMemorySecondaryStorage()
 
 	// Create auth instance with custom rate limits
 	config := &domain.Config{
@@ -290,7 +290,7 @@ func TestAuth_WithoutSecondaryStorage_NoRateLimiting(t *testing.T) {
 
 func TestAuth_SecondaryStorage_Expiration(t *testing.T) {
 	// Create secondary storage
-	secondaryStorage := storage.NewMemorySecondaryStorage()
+	secondaryStorage := storage.NewInMemorySecondaryStorage()
 
 	// Create auth instance with short session expiry
 	config := &domain.Config{

@@ -13,22 +13,22 @@ type memoryItem struct {
 	expiresAt *time.Time
 }
 
-// MemorySecondaryStorage implements SecondaryStorage interface using in-memory storage
+// InMemorySecondaryStorage implements SecondaryStorage interface using in-memory storage
 // This is useful for testing and development without external dependencies
-type MemorySecondaryStorage struct {
+type InMemorySecondaryStorage struct {
 	mu    sync.RWMutex
 	items map[string]*memoryItem
 }
 
-// NewMemorySecondaryStorage creates a new in-memory secondary storage instance
-func NewMemorySecondaryStorage() *MemorySecondaryStorage {
-	return &MemorySecondaryStorage{
+// NewInMemorySecondaryStorage creates a new in-memory secondary storage instance
+func NewInMemorySecondaryStorage() *InMemorySecondaryStorage {
+	return &InMemorySecondaryStorage{
 		items: make(map[string]*memoryItem),
 	}
 }
 
 // Get retrieves the value for the given key from memory
-func (s *MemorySecondaryStorage) Get(ctx context.Context, key string) (any, error) {
+func (s *InMemorySecondaryStorage) Get(ctx context.Context, key string) (any, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -47,7 +47,7 @@ func (s *MemorySecondaryStorage) Get(ctx context.Context, key string) (any, erro
 
 // Set stores the value for the given key in memory with optional TTL
 // ttlSeconds is the time to live in seconds. If 0 or negative, the key won't expire.
-func (s *MemorySecondaryStorage) Set(ctx context.Context, key string, value string, ttlSeconds int) error {
+func (s *InMemorySecondaryStorage) Set(ctx context.Context, key string, value string, ttlSeconds int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -65,7 +65,7 @@ func (s *MemorySecondaryStorage) Set(ctx context.Context, key string, value stri
 }
 
 // Delete removes the value for the given key from memory
-func (s *MemorySecondaryStorage) Delete(ctx context.Context, key string) error {
+func (s *InMemorySecondaryStorage) Delete(ctx context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,7 +75,7 @@ func (s *MemorySecondaryStorage) Delete(ctx context.Context, key string) error {
 
 // CleanExpired removes all expired items from memory
 // This should be called periodically by a background job
-func (s *MemorySecondaryStorage) CleanExpired() int {
+func (s *InMemorySecondaryStorage) CleanExpired() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -93,7 +93,7 @@ func (s *MemorySecondaryStorage) CleanExpired() int {
 }
 
 // GetAllKeys returns all keys in the storage (for testing purposes)
-func (s *MemorySecondaryStorage) GetAllKeys() []string {
+func (s *InMemorySecondaryStorage) GetAllKeys() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -105,7 +105,7 @@ func (s *MemorySecondaryStorage) GetAllKeys() []string {
 }
 
 // Count returns the number of items in the storage (for testing purposes)
-func (s *MemorySecondaryStorage) Count() int {
+func (s *InMemorySecondaryStorage) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -113,7 +113,7 @@ func (s *MemorySecondaryStorage) Count() int {
 }
 
 // Clear removes all items from memory (for testing purposes)
-func (s *MemorySecondaryStorage) Clear() {
+func (s *InMemorySecondaryStorage) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

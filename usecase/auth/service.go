@@ -7,6 +7,7 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/m-t-a97/go-better-auth/usecase/security_protection"
 )
 
 // PasswordHasher provides password hashing and verification functionality
@@ -42,12 +43,13 @@ func (h *CustomPasswordHasher) Verify(password, hash string) (bool, error) {
 
 // Service provides authentication use cases
 type Service struct {
-	config           *domain.Config
-	userRepo         user.Repository
-	sessionRepo      session.Repository
-	accountRepo      account.Repository
-	verificationRepo verification.Repository
-	passwordHasher   PasswordHasher
+	config            *domain.Config
+	userRepo          user.Repository
+	sessionRepo       session.Repository
+	accountRepo       account.Repository
+	verificationRepo  verification.Repository
+	passwordHasher    PasswordHasher
+	bruteForceService *security_protection.BruteForceService
 }
 
 // NewService creates a new authentication service
@@ -82,4 +84,9 @@ func NewService(
 		verificationRepo: verificationRepo,
 		passwordHasher:   passwordHasher,
 	}
+}
+
+// SetBruteForceService sets the brute force service for the authentication service
+func (s *Service) SetBruteForceService(service *security_protection.BruteForceService) {
+	s.bruteForceService = service
 }

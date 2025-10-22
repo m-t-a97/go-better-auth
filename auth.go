@@ -9,13 +9,17 @@ import (
 	"github.com/m-t-a97/go-better-auth/adapter/postgres"
 	"github.com/m-t-a97/go-better-auth/adapter/sqlite"
 	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/security"
 	"github.com/m-t-a97/go-better-auth/domain/session"
 	"github.com/m-t-a97/go-better-auth/handler"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/middleware"
 	"github.com/m-t-a97/go-better-auth/repository/cached"
+	"github.com/m-t-a97/go-better-auth/repository/memory"
+	"github.com/m-t-a97/go-better-auth/repository/secondary"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 	"github.com/m-t-a97/go-better-auth/usecase/ratelimit"
+	"github.com/m-t-a97/go-better-auth/usecase/security_protection"
 )
 
 // Auth represents the main authentication system
@@ -150,6 +154,18 @@ func (a *Auth) Handler() http.Handler {
 		accountRepo,
 		verificationRepo,
 	)
+
+	// Initialize brute force protection if enabled
+	if a.config.BruteForce != nil && a.config.BruteForce.Enabled {
+		var bruteForceRepo security.BruteForceRepository
+		if a.config.BruteForce.UseSecondaryStorage && a.config.SecondaryStorage != nil {
+			bruteForceRepo = secondary.NewSecondaryStorageBruteForceRepository(a.config.SecondaryStorage)
+		} else {
+			bruteForceRepo = memory.NewInMemoryBruteForceRepository()
+		}
+		bruteForceService := security_protection.NewBruteForceService(bruteForceRepo, a.config.BruteForce)
+		service.SetBruteForceService(bruteForceService)
+	}
 
 	// Create the base auth handler
 	baseHandler := handler.NewAuthHandler(service)

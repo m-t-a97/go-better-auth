@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"os"
 	"strings"
+
+	"github.com/m-t-a97/go-better-auth/domain/security"
 )
 
 // Default configuration values
@@ -140,6 +142,11 @@ func (c *Config) ApplyDefaults() {
 	}
 	if c.RateLimit.ModelName == "" {
 		c.RateLimit.ModelName = "rateLimit"
+	}
+
+	// Apply BruteForce defaults
+	if c.BruteForce == nil {
+		c.BruteForce = security.DefaultBruteForceConfig()
 	}
 
 	// Apply Advanced defaults

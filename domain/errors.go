@@ -58,4 +58,9 @@ var (
 		Message: "Resource not found",
 		Status:  404,
 	}
+	ErrAccountLocked = &AuthError{
+		Code:    "account_locked",
+		Message: "Account is temporarily locked due to too many failed login attempts",
+		Status:  429,
+	}
 )

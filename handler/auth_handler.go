@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -23,7 +22,6 @@ func NewAuthHandler(service *auth.Service) http.Handler {
 // ServeHTTP dispatches requests to appropriate handlers
 func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	fmt.Println(path)
 	method := r.Method
 
 	// Extract the endpoint (everything after /auth/)
@@ -44,11 +42,11 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "POST":
 		switch endpoint {
-		case "signup/email":
+		case "sign-up/email":
 			SignUpHandler(h.service)(w, r)
-		case "signin/email":
+		case "sign-in/email":
 			SignInHandler(h.service)(w, r)
-		case "signout":
+		case "sign-out":
 			SignOutHandler(h.service)(w, r)
 		case "validate":
 			ValidateSessionHandler(h.service)(w, r)

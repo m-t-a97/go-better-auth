@@ -30,6 +30,11 @@ type SignUpResponse struct {
 	User    *user.User
 }
 
+type PasswordLengthRequirementOptions struct {
+	MinLength int
+	MaxLength int
+}
+
 // SignUp is the use case for user sign up with email and password
 func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpResponse, error) {
 	if req == nil {
@@ -41,7 +46,14 @@ func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpRespon
 		return nil, fmt.Errorf("email/password is disabled")
 	}
 
-	if err := req.Validate(); err != nil {
+	var options *PasswordLengthRequirementOptions = nil
+	if s.config.EmailAndPassword != nil {
+		options = &PasswordLengthRequirementOptions{
+			MinLength: s.config.EmailAndPassword.MinPasswordLength,
+			MaxLength: s.config.EmailAndPassword.MaxPasswordLength,
+		}
+	}
+	if err := req.Validate(options); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
@@ -161,7 +173,7 @@ func (s *Service) sendVerificationEmail(ctx context.Context, user *user.User) {
 }
 
 // Validate validates the sign up request
-func (req *SignUpRequest) Validate() error {
+func (req *SignUpRequest) Validate(options *PasswordLengthRequirementOptions) error {
 	if strings.TrimSpace(req.Email) == "" {
 		return fmt.Errorf("email is required")
 	}
@@ -170,12 +182,27 @@ func (req *SignUpRequest) Validate() error {
 		return fmt.Errorf("password is required")
 	}
 
-	if len(strings.TrimSpace(req.Password)) < 8 {
-		return fmt.Errorf("password must be at least 8 characters")
-	}
-
 	if strings.TrimSpace(req.Name) == "" {
 		return fmt.Errorf("name is required")
+	}
+
+	password := strings.TrimSpace(req.Password)
+	passwordLen := len(password)
+
+	minPasswordLengthValue := 8 // Default
+	if options != nil {
+		minPasswordLengthValue = options.MinLength
+	}
+	if passwordLen < minPasswordLengthValue {
+		return fmt.Errorf("password must be at least %d characters", minPasswordLengthValue)
+	}
+
+	maxPasswordLengthValue := 128 // Default
+	if options != nil {
+		maxPasswordLengthValue = options.MaxLength
+	}
+	if passwordLen > maxPasswordLengthValue {
+		return fmt.Errorf("password must not exceed %d characters", maxPasswordLengthValue)
 	}
 
 	return nil

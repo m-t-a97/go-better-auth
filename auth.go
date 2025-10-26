@@ -178,6 +178,10 @@ func (a *Auth) Handler() http.Handler {
 		handlerWithMiddleware = rateLimitMW(baseHandler)
 	}
 
+	// Apply hooks middleware (before and after request hooks)
+	hooksMiddleware := middleware.HooksMiddleware(a.config)
+	handlerWithMiddleware = hooksMiddleware(handlerWithMiddleware)
+
 	// Wrap with CORS middleware if trusted origins are configured
 	if a.config.TrustedOrigins.StaticOrigins != nil || a.config.TrustedOrigins.DynamicOrigins != nil {
 		corsMiddleware := middleware.NewCORSMiddleware(&a.config.TrustedOrigins)

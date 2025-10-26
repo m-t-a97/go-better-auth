@@ -581,15 +581,111 @@ Add request lifecycle hooks:
 
 ```go
 Hooks: &domain.HooksConfig{
-    Before: func(ctx *domain.RequestContext) error {
+    Before: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
         // Pre-request logic
-        return nil
+        // ctx contains: Path, Method, Body, Headers, Query, Request, Context
+
+        // Optionally return modified context
+        if ctx.Path == "/auth/sign-up" {
+            return &domain.HookResponse{
+                Context: &domain.RequestContext{
+                    Body: map[string]any{
+                        "name": "Custom Name",
+                    },
+                },
+            }, nil
+        }
+
+        // Return error to block the request (403 Forbidden)
+        // return nil, errors.New("request blocked")
+
+        return nil, nil
     },
-    After: func(ctx *domain.RequestContext) error {
-        // Post-request logic
-        return nil
+    After: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
+        // Post-request logic (errors are silently handled)
+        return nil, nil
     },
 }
+```
+
+#### RequestContext Object
+
+The `RequestContext` object passed to hooks provides:
+
+- **Path** (string): The URL path of the request (e.g., "/auth/signin")
+- **Method** (string): The HTTP method (GET, POST, etc.)
+- **Body** (any): The parsed request body (for POST/PUT/PATCH requests)
+- **Headers** (map[string][]string): Request headers
+- **Query** (map[string][]string): URL query parameters
+- **Request** (\*http.Request): The underlying HTTP request object
+- **Context** (map[string]any): Generic key-value store for auth-related data
+
+#### Hook Examples
+
+**Example 1: Modify Request Context Before Processing**
+
+```go
+Before: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
+    if ctx.Path == "/auth/sign-up" {
+        // Modify context for downstream processing
+        return &domain.HookResponse{
+            Context: &domain.RequestContext{
+                Body: map[string]any{
+                    "company": "Default Corp",
+                },
+                Context: map[string]any{
+                    "isSignUp": true,
+                    "source":   "web",
+                },
+            },
+        }, nil
+    }
+    return nil, nil
+},
+```
+
+**Example 2: Block Requests Based on Headers**
+
+```go
+Before: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
+    // Access headers to make authorization decisions
+    authHeader, exists := ctx.Headers["Authorization"]
+    if !exists || len(authHeader) == 0 {
+        return nil, errors.New("missing authorization header")
+    }
+    return nil, nil
+},
+```
+
+**Example 3: Access Query Parameters**
+
+```go
+Before: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
+    // Access query parameters
+    if emails, ok := ctx.Query["email"]; ok && len(emails) > 0 {
+        email := emails[0]
+        // Process email
+        return &domain.HookResponse{
+            Context: &domain.RequestContext{
+                Context: map[string]any{
+                    "providedEmail": email,
+                },
+            },
+        }, nil
+    }
+    return nil, nil
+},
+```
+
+**Example 4: Post-Request Logging**
+
+```go
+After: func(ctx *domain.RequestContext) (*domain.HookResponse, error) {
+    // Log after request processing
+    log.Printf("Request completed: %s %s, Context: %v",
+        ctx.Method, ctx.Path, ctx.Context)
+    return nil, nil
+},
 ```
 
 ### Plugins

@@ -581,7 +581,7 @@ type LoggerConfig struct {
 	Level LogLevel
 
 	// Log is a custom logging function
-	Log func(level LogLevel, message string, args ...interface{})
+	Log func(level LogLevel, message string, args ...any)
 }
 
 // ModelHooks holds before/after hooks for a model
@@ -616,19 +616,42 @@ type OnAPIErrorConfig struct {
 	ErrorURL string
 }
 
-// RequestContext holds request context for hooks
+// RequestContext holds request context information passed to hooks.
+// Users can read all properties to understand the request and optionally
+// modify fields by returning a new context object from hook functions.
 type RequestContext struct {
-	Path     string
-	Method   string
-	Request  *http.Request
-	Response interface{}
+	// Path is the URL path of the request (e.g., "/auth/signin")
+	Path string
+	// Method is the HTTP method of the request (GET, POST, etc.)
+	Method string
+	// Body contains the parsed request body (for POST/PUT requests)
+	Body any
+	// Headers contains the request headers
+	Headers map[string][]string
+	// Query contains query parameters from the URL
+	Query map[string][]string
+	// Request is the underlying *http.Request object
+	Request *http.Request
+	// Context contains auth-related context like session, config, etc.
+	Context map[string]any
+}
+
+// HookResponse is returned by hook functions to modify the request context.
+// If the hook returns nil, the original context is used.
+type HookResponse struct {
+	// Context contains the modified context to be merged with the original
+	Context *RequestContext
 }
 
 // HooksConfig holds request lifecycle hooks
 type HooksConfig struct {
-	// Before is executed before processing the request
-	Before func(ctx *RequestContext) error
+	// Before is executed before processing the request.
+	// It receives the request context and can return a modified context.
+	// If it returns an error, the request is blocked.
+	Before func(ctx *RequestContext) (*HookResponse, error)
 
-	// After is executed after processing the request
-	After func(ctx *RequestContext) error
+	// After is executed after processing the request.
+	// It receives the request context and can return a modified context.
+	// Errors are silently handled to avoid disrupting responses.
+	After func(ctx *RequestContext) (*HookResponse, error)
 }

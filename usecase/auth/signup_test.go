@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/account"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 )
@@ -41,8 +42,8 @@ func TestSignUp_Valid(t *testing.T) {
 		t.Errorf("Expected name %s, got %s", req.Name, resp.User.Name)
 	}
 
-	if resp.User.EmailVerified != false {
-		t.Errorf("Expected EmailVerified to be false, got %v", resp.User.EmailVerified)
+	if resp.User.EmailVerified != true {
+		t.Errorf("Expected EmailVerified to be true (email verification not configured), got %v", resp.User.EmailVerified)
 	}
 
 	if resp.User.ID == "" {
@@ -190,13 +191,13 @@ func TestSignUp_PasswordHashing(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(context.Background(), req)
+	resp, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
 
 	// Find the account and verify password is hashed
-	acc, err := accountRepo.FindByUserIDAndProvider(user.User.ID, account.ProviderCredential)
+	acc, err := accountRepo.FindByUserIDAndProvider(resp.User.ID, account.ProviderCredential)
 	if err != nil {
 		t.Fatalf("Failed to find account: %v", err)
 	}
@@ -234,19 +235,19 @@ func TestSignUp_CreatedAccountWithProvider(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(context.Background(), req)
+	resp, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
 
 	// Find the account
-	acc, err := accountRepo.FindByUserIDAndProvider(user.User.ID, account.ProviderCredential)
+	acc, err := accountRepo.FindByUserIDAndProvider(resp.User.ID, account.ProviderCredential)
 	if err != nil {
 		t.Fatalf("Failed to find account: %v", err)
 	}
 
-	if acc.UserID != user.User.ID {
-		t.Errorf("Expected account UserID %s, got %s", user.User.ID, acc.UserID)
+	if acc.UserID != resp.User.ID {
+		t.Errorf("Expected account UserID %s, got %s", resp.User.ID, acc.UserID)
 	}
 
 	if acc.ProviderID != account.ProviderCredential {
@@ -275,18 +276,18 @@ func TestSignUp_TimestampsSet(t *testing.T) {
 		Name:     "Test User",
 	}
 
-	user, err := service.SignUp(context.Background(), req)
+	resp, err := service.SignUp(context.Background(), req)
 	if err != nil {
 		t.Fatalf("SignUp failed: %v", err)
 	}
 
 	afterTime := time.Now()
 
-	if user.User.CreatedAt.Before(beforeTime) || user.User.CreatedAt.After(afterTime) {
+	if resp.User.CreatedAt.Before(beforeTime) || resp.User.CreatedAt.After(afterTime) {
 		t.Errorf("CreatedAt timestamp not set correctly")
 	}
 
-	if user.User.UpdatedAt.Before(beforeTime) || user.User.UpdatedAt.After(afterTime) {
+	if resp.User.UpdatedAt.Before(beforeTime) || resp.User.UpdatedAt.After(afterTime) {
 		t.Errorf("UpdatedAt timestamp not set correctly")
 	}
 }
@@ -348,5 +349,43 @@ func TestSignUpRequest_Validate(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestSignUp_Disabled(t *testing.T) {
+	config := createTestConfig()
+	config.EmailAndPassword = &domain.EmailPasswordConfig{
+		Enabled:                  true,
+		DisableSignUp:            true,
+		RequireEmailVerification: false,
+		MinPasswordLength:        8,
+		MaxPasswordLength:        128,
+	}
+
+	service := NewService(
+		config,
+		memory.NewUserRepository(),
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		memory.NewVerificationRepository(),
+	)
+
+	req := &SignUpRequest{
+		Email:    "user@example.com",
+		Password: "ValidPassword123!",
+		Name:     "Test User",
+	}
+
+	resp, err := service.SignUp(context.Background(), req)
+	if err == nil {
+		t.Fatal("Expected error when signup is disabled, got nil")
+	}
+
+	if resp != nil {
+		t.Fatal("Expected nil response when signup is disabled")
+	}
+
+	if err.Error() != "email/password is disabled" {
+		t.Errorf("Expected 'email/password is disabled' error, got: %v", err)
 	}
 }

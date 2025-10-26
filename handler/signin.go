@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
@@ -17,13 +17,12 @@ type SignInRequest struct {
 
 // SignInResponse is the HTTP response for user signin
 type SignInResponse struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
-	UserID    string    `json:"user_id"`
+	Token string     `json:"token"`
+	User  *user.User `json:"user"`
 }
 
 // SignInHandler handles POST /auth/signin
-func SignInHandler(svc *auth.Service) http.HandlerFunc {
+func SignInHandler(service *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -41,7 +40,7 @@ func SignInHandler(svc *auth.Service) http.HandlerFunc {
 		userAgent := r.Header.Get("User-Agent")
 
 		// Call use case
-		resp, err := svc.SignIn(r.Context(), &auth.SignInRequest{
+		resp, err := service.SignIn(r.Context(), &auth.SignInRequest{
 			Email:     req.Email,
 			Password:  req.Password,
 			IPAddress: ipAddress,
@@ -74,9 +73,8 @@ func SignInHandler(svc *auth.Service) http.HandlerFunc {
 
 		// Build response
 		httpResp := SignInResponse{
-			Token:     resp.Session.Token,
-			ExpiresAt: resp.Session.ExpiresAt,
-			UserID:    resp.Session.UserID,
+			Token: resp.Session.Token,
+			User:  resp.User,
 		}
 
 		SuccessResponse(w, http.StatusOK, httpResp)

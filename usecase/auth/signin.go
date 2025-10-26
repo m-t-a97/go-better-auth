@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/session"
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
@@ -26,6 +26,7 @@ type SignInRequest struct {
 // SignInResponse contains the response data for sign in
 type SignInResponse struct {
 	Session *session.Session
+	User    *user.User
 }
 
 // SignIn is the use case for user sign in with email and password
@@ -47,7 +48,7 @@ func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInRespon
 	}
 
 	// Find user by email
-	u, err := s.userRepo.FindByEmail(req.Email)
+	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
 		// Record failed attempt on brute force
 		if s.bruteForceService != nil {
@@ -57,7 +58,7 @@ func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInRespon
 	}
 
 	// Find account for this user (credential provider)
-	acc, err := s.accountRepo.FindByUserIDAndProvider(u.ID, "credential")
+	acc, err := s.accountRepo.FindByUserIDAndProvider(user.ID, "credential")
 	if err != nil {
 		// Record failed attempt on brute force
 		if s.bruteForceService != nil {
@@ -98,38 +99,38 @@ func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInRespon
 	// Create session with pointers for optional fields
 	ipAddr := req.IPAddress
 	userAgent := req.UserAgent
-	sess := &session.Session{
+	sessionCreated := &session.Session{
 		ID:        uuid.New().String(),
-		UserID:    u.ID,
+		UserID:    user.ID,
 		Token:     sessionToken,
 		IPAddress: &ipAddr,
 		UserAgent: &userAgent,
-		ExpiresAt: time.Now().Add(24 * time.Hour), // 24 hour session
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), // 7 day session
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
 	// Save session
-	if err := s.sessionRepo.Create(sess); err != nil {
+	if err := s.sessionRepo.Create(sessionCreated); err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	// Send verification email if configured and email not verified
-	if s.config.EmailVerification != nil && s.config.EmailVerification.SendOnSignIn && !u.EmailVerified && s.config.EmailVerification.SendVerificationEmail != nil {
+	if s.config.EmailVerification != nil && s.config.EmailVerification.SendOnSignIn && !user.EmailVerified && s.config.EmailVerification.SendVerificationEmail != nil {
 		// Generate verification token
 		verificationToken, err := crypto.GenerateToken(32)
 		if err == nil {
 			// Create verification record
-			v := &verification.Verification{
-				Identifier: u.Email,
+			verificationCreated := &verification.Verification{
+				Identifier: user.Email,
 				Token:      verificationToken,
 				Type:       verification.TypeEmailVerification,
-				ExpiresAt:  time.Now().Add(time.Duration(s.config.EmailVerification.ExpiresIn) * time.Second),
+				ExpiresAt:  time.Now().Add(s.config.EmailVerification.ExpiresIn),
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			}
 
-			if err := s.verificationRepo.Create(v); err == nil {
+			if err := s.verificationRepo.Create(verificationCreated); err == nil {
 				// Build verification URL
 				baseURL := s.config.BaseURL
 				basePath := s.config.BasePath
@@ -138,30 +139,19 @@ func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInRespon
 				}
 				verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
 
-				// Convert user.User to domain.User
-				domainUser := &domain.User{
-					ID:            u.ID,
-					Name:          u.Name,
-					Email:         u.Email,
-					EmailVerified: u.EmailVerified,
-					Image:         u.Image,
-					CreatedAt:     u.CreatedAt,
-					UpdatedAt:     u.UpdatedAt,
-				}
-
 				// Send email asynchronously
 				go func() {
-					if err := s.config.EmailVerification.SendVerificationEmail(ctx, domainUser, verifyURL, verificationToken); err != nil {
-						slog.ErrorContext(ctx, "failed to send verification email on sign in", "user_id", u.ID, "email", u.Email, "error", err)
+					if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {
+						slog.ErrorContext(ctx, "failed to send verification email on sign in", "user_id", user.ID, "email", user.Email, "error", err)
 						return
 					}
-					slog.InfoContext(ctx, "verification email sent on sign in", "user_id", u.ID, "email", u.Email)
+					slog.InfoContext(ctx, "verification email sent on sign in", "user_id", user.ID, "email", user.Email)
 				}()
 			}
 		}
 	}
 
-	return &SignInResponse{Session: sess}, nil
+	return &SignInResponse{Session: sessionCreated, User: user}, nil
 }
 
 // Validate validates the sign in request

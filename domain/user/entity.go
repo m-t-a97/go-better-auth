@@ -8,13 +8,13 @@ import (
 
 // User represents an authenticated user in the system
 type User struct {
-	ID            string
-	Name          string
-	Email         string
-	EmailVerified bool
-	Image         *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	EmailVerified bool      `json:"email_verified"`
+	Image         *string   `json:"image"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // CreateUserRequest represents a request to create a new user

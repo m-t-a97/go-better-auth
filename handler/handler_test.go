@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
@@ -26,8 +29,8 @@ func setupTestService() *auth.Service {
 }
 
 func TestSignUpHandler_Valid(t *testing.T) {
-	svc := setupTestService()
-	handler := SignUpHandler(svc)
+	service := setupTestService()
+	handler := SignUpHandler(service)
 
 	req := SignUpRequest{
 		Email:    "test@example.com",
@@ -52,9 +55,14 @@ func TestSignUpHandler_Valid(t *testing.T) {
 		t.Error("Expected success response")
 	}
 
-	data := resp.Data.(map[string]interface{})
-	if data["email"] != req.Email {
-		t.Errorf("Expected email %s, got %v", req.Email, data["email"])
+	data := resp.Data.(map[string]any)
+	if data["token"] == nil {
+		t.Error("Expected token in response")
+	}
+
+	user := data["user"].(map[string]interface{})
+	if user["email"] != req.Email {
+		t.Errorf("Expected email %s, got %v", req.Email, user["email"])
 	}
 }
 
@@ -262,6 +270,7 @@ func TestValidateSessionHandler_Valid(t *testing.T) {
 	}
 	validateBody, _ := json.Marshal(validateReq)
 	validateHttpReq := httptest.NewRequest(http.MethodPost, "/auth/validate", bytes.NewReader(validateBody))
+	validateHttpReq.Header.Set("Authorization", "Bearer "+token)
 	validateW := httptest.NewRecorder()
 
 	ValidateSessionHandler(svc)(validateW, validateHttpReq)
@@ -281,11 +290,8 @@ func TestValidateSessionHandler_Valid(t *testing.T) {
 func TestValidateSessionHandler_InvalidToken(t *testing.T) {
 	svc := setupTestService()
 
-	validateReq := ValidateSessionRequest{
-		Token: "invalid-token",
-	}
-	validateBody, _ := json.Marshal(validateReq)
-	validateHttpReq := httptest.NewRequest(http.MethodPost, "/auth/validate", bytes.NewReader(validateBody))
+	validateHttpReq := httptest.NewRequest(http.MethodPost, "/auth/validate", nil)
+	validateHttpReq.Header.Set("Authorization", "Bearer invalid-token")
 	validateW := httptest.NewRecorder()
 
 	ValidateSessionHandler(svc)(validateW, validateHttpReq)
@@ -306,10 +312,6 @@ func TestResponseEnvelope_Success(t *testing.T) {
 		t.Error("Expected success = true")
 	}
 
-	if resp.Code != http.StatusOK {
-		t.Errorf("Expected code %d, got %d", http.StatusOK, resp.Code)
-	}
-
 	if resp.Error != "" {
 		t.Errorf("Expected no error, got %s", resp.Error)
 	}
@@ -326,11 +328,228 @@ func TestResponseEnvelope_Error(t *testing.T) {
 		t.Error("Expected success = false")
 	}
 
-	if resp.Code != http.StatusBadRequest {
-		t.Errorf("Expected code %d, got %d", http.StatusBadRequest, resp.Code)
-	}
-
 	if resp.Error != "bad request" {
 		t.Errorf("Expected error 'bad request', got %s", resp.Error)
+	}
+}
+
+// Email Verification Tests
+
+func TestVerifyEmailGetHandler_ValidToken(t *testing.T) {
+	// Setup
+	userRepo := memory.NewUserRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	// Create a user
+	testUser := &user.User{
+		ID:            "test-user-id",
+		Email:         "verify@example.com",
+		EmailVerified: false,
+		Name:          "Test User",
+	}
+	userRepo.Create(testUser)
+
+	// Create verification token
+	verificationToken := "valid-token-12345"
+	v := &verification.Verification{
+		ID:         "verif-id",
+		Identifier: testUser.Email,
+		Token:      verificationToken,
+		Type:       verification.TypeEmailVerification,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	verificationRepo.Create(v)
+
+	config := &domain.Config{}
+	config.ApplyDefaults()
+	config.BaseURL = "https://example.com"
+
+	service := auth.NewService(
+		config,
+		userRepo,
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		verificationRepo,
+	)
+
+	handler := VerifyEmailHandler(service)
+
+	// Make request
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token="+verificationToken, nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	// Verify redirect
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("Expected status %d, got %d", http.StatusSeeOther, w.Code)
+	}
+
+	// Verify user email is now verified
+	verifiedUser, _ := userRepo.FindByID(testUser.ID)
+	if !verifiedUser.EmailVerified {
+		t.Error("Expected user email to be verified")
+	}
+
+	// Verify token is deleted
+	_, err := verificationRepo.FindByToken(verificationToken)
+	if err == nil {
+		t.Error("Expected verification token to be deleted")
+	}
+}
+
+func TestVerifyEmailGetHandler_MissingToken(t *testing.T) {
+	service := setupTestService()
+	handler := VerifyEmailHandler(service)
+
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email", nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestVerifyEmailGetHandler_InvalidToken(t *testing.T) {
+	service := setupTestService()
+	handler := VerifyEmailHandler(service)
+
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token=invalid-token", nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	// Invalid token should return 401 Unauthorized
+	if w.Code != http.StatusUnauthorized && w.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status 401 or 500, got %d", w.Code)
+	}
+}
+
+func TestVerifyEmailGetHandler_ExpiredToken(t *testing.T) {
+	// Setup
+	userRepo := memory.NewUserRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	// Create a user
+	testUser := &user.User{
+		ID:            "test-user-id",
+		Email:         "verify@example.com",
+		EmailVerified: false,
+		Name:          "Test User",
+	}
+	userRepo.Create(testUser)
+
+	// Create expired verification token
+	verificationToken := "expired-token-12345"
+	v := &verification.Verification{
+		ID:         "verif-id",
+		Identifier: testUser.Email,
+		Token:      verificationToken,
+		Type:       verification.TypeEmailVerification,
+		ExpiresAt:  time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
+		CreatedAt:  time.Now().Add(-2 * time.Hour),
+		UpdatedAt:  time.Now().Add(-2 * time.Hour),
+	}
+	verificationRepo.Create(v)
+
+	config := &domain.Config{}
+	config.ApplyDefaults()
+
+	service := auth.NewService(
+		config,
+		userRepo,
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		verificationRepo,
+	)
+
+	handler := VerifyEmailHandler(service)
+
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token="+verificationToken, nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status %d, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestVerifyEmailGetHandler_InvalidMethod(t *testing.T) {
+	service := setupTestService()
+	handler := VerifyEmailHandler(service)
+
+	httpReq := httptest.NewRequest(http.MethodPost, "/auth/verify-email", nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status %d, got %d", http.StatusMethodNotAllowed, w.Code)
+	}
+}
+
+func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
+	// Setup
+	userRepo := memory.NewUserRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	// Create a user
+	testUser := &user.User{
+		ID:            "test-user-id",
+		Email:         "verify@example.com",
+		EmailVerified: false,
+		Name:          "Test User",
+	}
+	userRepo.Create(testUser)
+
+	// Create verification token
+	verificationToken := "valid-token-12345"
+	v := &verification.Verification{
+		ID:         "verif-id",
+		Identifier: testUser.Email,
+		Token:      verificationToken,
+		Type:       verification.TypeEmailVerification,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	verificationRepo.Create(v)
+
+	config := &domain.Config{}
+	config.ApplyDefaults()
+	config.BaseURL = "https://example.com"
+	config.EmailVerification = &domain.EmailVerificationConfig{
+		ExpiresIn:             24 * time.Hour,
+		SuccessRedirectURL:    "https://example.com/login?verified=true",
+		SendVerificationEmail: nil,
+	}
+
+	service := auth.NewService(
+		config,
+		userRepo,
+		memory.NewSessionRepository(),
+		memory.NewAccountRepository(),
+		verificationRepo,
+	)
+
+	handler := VerifyEmailHandler(service)
+
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token="+verificationToken, nil)
+	w := httptest.NewRecorder()
+
+	handler(w, httpReq)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("Expected status %d, got %d", http.StatusSeeOther, w.Code)
+	}
+
+	location := w.Header().Get("Location")
+	if location != "https://example.com/login?verified=true" {
+		t.Errorf("Expected redirect to custom URL, got %s", location)
 	}
 }

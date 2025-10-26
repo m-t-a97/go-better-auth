@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 )
@@ -226,5 +227,63 @@ func TestSignOut_InvalidToken(t *testing.T) {
 	err := service.SignOut(req)
 	if err == nil {
 		t.Fatal("Expected error for invalid session token, got nil")
+	}
+}
+
+func TestSignIn_WithDisabledSignUp(t *testing.T) {
+	// Verify that existing users can still sign in even when signup is disabled
+	userRepo := memory.NewUserRepository()
+	sessionRepo := memory.NewSessionRepository()
+	accountRepo := memory.NewAccountRepository()
+	verificationRepo := memory.NewVerificationRepository()
+
+	// Create a user
+	password := "ValidPassword123!"
+	hashedPassword, err := crypto.HashPassword(password)
+	if err != nil {
+		t.Fatalf("Failed to hash password: %v", err)
+	}
+
+	// Manually create user and account
+	testUser := createTestUser()
+	if err := userRepo.Create(testUser); err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	testAccount := createTestAccount(testUser.ID, &hashedPassword)
+	if err := accountRepo.Create(testAccount); err != nil {
+		t.Fatalf("Failed to create test account: %v", err)
+	}
+
+	// Create config with disabled signup
+	config := createTestConfig()
+	config.EmailAndPassword = &domain.EmailPasswordConfig{
+		Enabled:                  true,
+		DisableSignUp:            true,
+		RequireEmailVerification: false,
+		MinPasswordLength:        8,
+		MaxPasswordLength:        128,
+	}
+
+	service := NewService(config, userRepo, sessionRepo, accountRepo, verificationRepo)
+
+	req := &SignInRequest{
+		Email:     testUser.Email,
+		Password:  password,
+		IPAddress: "192.168.1.1",
+		UserAgent: "Mozilla/5.0",
+	}
+
+	resp, err := service.SignIn(context.Background(), req)
+	if err != nil {
+		t.Fatalf("SignIn failed when signup is disabled: %v", err)
+	}
+
+	if resp == nil || resp.Session == nil {
+		t.Fatal("SignIn returned nil response when signup is disabled")
+	}
+
+	if resp.User.Email != testUser.Email {
+		t.Errorf("Expected user email %s, got %s", testUser.Email, resp.User.Email)
 	}
 }

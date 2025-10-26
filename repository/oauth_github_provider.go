@@ -3,9 +3,10 @@ package repository
 import (
 	"fmt"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
+
+	"github.com/m-t-a97/go-better-auth/domain/account"
 )
 
 // GitHubOAuthProvider implements account.OAuthProvider for GitHub OAuth

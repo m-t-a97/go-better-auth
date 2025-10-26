@@ -8,13 +8,13 @@ import (
 
 // ValidateSessionRequest contains the request data for validating a session
 type ValidateSessionRequest struct {
-	SessionToken string
+	SessionToken string `json:"session_token"`
 }
 
 // ValidateSessionResponse contains the response data for validating a session
 type ValidateSessionResponse struct {
-	Session *session.Session
-	Valid   bool
+	Session *session.Session `json:"session"`
+	Valid   bool             `json:"valid"`
 }
 
 // ValidateSession is the use case for validating a user's session

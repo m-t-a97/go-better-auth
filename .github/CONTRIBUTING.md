@@ -57,6 +57,40 @@ This will automatically select the workspace folder. But if you need to find the
 
 #### Development:
 
-Follow the README instructions to set up the development environment.
+1. **Install Dependencies**
+
+- Run `go mod download && go mod tidy` to install Go dependencies.
+
+2. **Project Structure**
+
+- Code is organized by Go Clean Architecture:
+  - `domain/` – core models and interfaces
+  - `usecase/` – business logic
+  - `repository/` – data access implementations
+  - `handler/` – HTTP/gRPC handlers
+  - `infrastructure/` – external integrations
+
+3. **Testing**
+
+- Run unit and integration tests:
+
+  ```bash
+  # Run all tests
+  make test
+
+  # Run specific tests
+  go test -v ./usecase/auth -run TestSignUp|TestSignIn
+  ```
+
+4. **Making Changes**
+
+- Follow the project’s folder structure.
+- Write tests for new features.
+- Ensure all code passes linting and tests before submitting a PR.
+
+5. **Submitting a PR**
+
+- Push your branch and open a pull request.
+- Fill out the PR template and link related issues.
 
 ---

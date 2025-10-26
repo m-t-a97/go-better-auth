@@ -10,7 +10,6 @@ type Response struct {
 	Success bool   `json:"success"`
 	Data    any    `json:"data,omitempty"`
 	Error   string `json:"error,omitempty"`
-	Code    int    `json:"code"`
 }
 
 // ErrorResponse writes a JSON error response
@@ -20,18 +19,16 @@ func ErrorResponse(w http.ResponseWriter, code int, message string) {
 	json.NewEncoder(w).Encode(Response{
 		Success: false,
 		Error:   message,
-		Code:    code,
 	})
 }
 
 // SuccessResponse writes a JSON success response
-func SuccessResponse(w http.ResponseWriter, code int, data interface{}) {
+func SuccessResponse(w http.ResponseWriter, code int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data:    data,
-		Code:    code,
 	})
 }
 

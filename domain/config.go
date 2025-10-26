@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain/security"
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/storage"
 )
 
@@ -39,11 +40,11 @@ type Config struct {
 	// Secondary Storage
 	SecondaryStorage storage.SecondaryStorage
 
-	// EmailVerification configuration
-	EmailVerification *EmailVerificationConfig
-
 	// EmailAndPassword authentication configuration
 	EmailAndPassword *EmailPasswordConfig
+
+	// EmailVerification configuration
+	EmailVerification *EmailVerificationConfig
 
 	// SocialProviders configuration
 	SocialProviders *SocialProvidersConfig
@@ -225,7 +226,7 @@ type RedisConfig struct {
 // EmailVerificationConfig holds email verification configuration
 type EmailVerificationConfig struct {
 	// SendVerificationEmail is a function to send verification emails
-	SendVerificationEmail func(ctx context.Context, user *User, url string, token string) error
+	SendVerificationEmail func(ctx context.Context, user *user.User, url string, token string) error
 
 	// SendOnSignUp automatically sends verification email after sign up (default: false)
 	SendOnSignUp bool
@@ -236,8 +237,12 @@ type EmailVerificationConfig struct {
 	// AutoSignInAfterVerification automatically signs in the user after email verification
 	AutoSignInAfterVerification bool
 
-	// ExpiresIn is the number of seconds the verification token is valid for (default: 3600)
-	ExpiresIn int
+	// ExpiresIn is the duration the verification token is valid for (default: 1 hour)
+	ExpiresIn time.Duration
+
+	// SuccessRedirectURL is the URL to redirect to after successful email verification
+	// If not provided, defaults to BaseURL
+	SuccessRedirectURL string
 }
 
 // PasswordConfig holds custom password hashing and verification
@@ -270,7 +275,7 @@ type EmailPasswordConfig struct {
 	AutoSignIn bool
 
 	// SendResetPassword is a function to send reset password emails
-	SendResetPassword func(ctx context.Context, user *User, url string, token string) error
+	SendResetPassword func(ctx context.Context, user *user.User, url string, token string) error
 
 	// ResetPasswordTokenExpiresIn is the number of seconds the reset token is valid for (default: 3600)
 	ResetPasswordTokenExpiresIn int
@@ -310,7 +315,7 @@ type DiscordProviderConfig struct {
 // Plugin defines the interface for Go Better Auth plugins
 type Plugin interface {
 	Name() string
-	Initialize(config interface{}) error
+	Initialize(config any) error
 }
 
 // AdditionalField defines an additional field for a model
@@ -325,7 +330,7 @@ type ChangeEmailConfig struct {
 	Enabled bool
 
 	// SendChangeEmailVerification is a function to send change email verification
-	SendChangeEmailVerification func(ctx context.Context, user *User, newEmail string, url string, token string) error
+	SendChangeEmailVerification func(ctx context.Context, user *user.User, newEmail string, url string, token string) error
 }
 
 // DeleteUserConfig holds user deletion configuration
@@ -334,13 +339,13 @@ type DeleteUserConfig struct {
 	Enabled bool
 
 	// SendDeleteAccountVerification is a function to send delete account verification
-	SendDeleteAccountVerification func(ctx context.Context, user *User, url string, token string) error
+	SendDeleteAccountVerification func(ctx context.Context, user *user.User, url string, token string) error
 
 	// BeforeDelete is called before user deletion
-	BeforeDelete func(ctx context.Context, user *User) error
+	BeforeDelete func(ctx context.Context, user *user.User) error
 
 	// AfterDelete is called after user deletion
-	AfterDelete func(ctx context.Context, user *User) error
+	AfterDelete func(ctx context.Context, user *user.User) error
 }
 
 // UserConfig holds user configuration options

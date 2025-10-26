@@ -31,7 +31,7 @@ func TestNewAuthMiddlewareFactory(t *testing.T) {
 
 	assert.NotNil(t, factory)
 	assert.Equal(t, service, factory.service)
-	assert.Equal(t, "session", factory.cookieName)
+	assert.Equal(t, "session_token", factory.cookieName)
 	assert.NotNil(t, factory.logger)
 }
 
@@ -101,7 +101,7 @@ func TestAuthMiddlewareFactory_WithCookieName(t *testing.T) {
 	service := setupTestService()
 	factory := NewAuthMiddlewareFactory(service, logger)
 
-	assert.Equal(t, "session", factory.cookieName)
+	assert.Equal(t, "session_token", factory.cookieName)
 
 	updatedFactory := factory.WithCookieName("custom_cookie")
 

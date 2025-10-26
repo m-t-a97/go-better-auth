@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 )
 
@@ -80,12 +81,12 @@ func TestDeleteUser_WithBeforeHook_Success(t *testing.T) {
 
 	// Track hook calls
 	beforeHookCalled := false
-	var capturedUser *domain.User
+	var capturedUser *user.User
 
 	// Set up the before delete hook
 	config.User = &domain.UserConfig{
 		DeleteUser: &domain.DeleteUserConfig{
-			BeforeDelete: func(ctx context.Context, user *domain.User) error {
+			BeforeDelete: func(ctx context.Context, user *user.User) error {
 				beforeHookCalled = true
 				capturedUser = user
 				return nil
@@ -142,12 +143,12 @@ func TestDeleteUser_WithAfterHook_Success(t *testing.T) {
 
 	// Track hook calls
 	afterHookCalled := false
-	var capturedUser *domain.User
+	var capturedUser *user.User
 
 	// Set up the after delete hook
 	config.User = &domain.UserConfig{
 		DeleteUser: &domain.DeleteUserConfig{
-			AfterDelete: func(ctx context.Context, user *domain.User) error {
+			AfterDelete: func(ctx context.Context, user *user.User) error {
 				afterHookCalled = true
 				capturedUser = user
 				return nil
@@ -207,12 +208,12 @@ func TestDeleteUser_WithBothHooks_Success(t *testing.T) {
 	// Set up both hooks
 	config.User = &domain.UserConfig{
 		DeleteUser: &domain.DeleteUserConfig{
-			BeforeDelete: func(ctx context.Context, user *domain.User) error {
+			BeforeDelete: func(ctx context.Context, user *user.User) error {
 				beforeHookCalled = true
 				callOrder = append(callOrder, "before")
 				return nil
 			},
-			AfterDelete: func(ctx context.Context, user *domain.User) error {
+			AfterDelete: func(ctx context.Context, user *user.User) error {
 				afterHookCalled = true
 				callOrder = append(callOrder, "after")
 				return nil
@@ -276,10 +277,10 @@ func TestDeleteUser_BeforeHookError_StopsExecution(t *testing.T) {
 	// Set up hooks with before hook that returns an error
 	config.User = &domain.UserConfig{
 		DeleteUser: &domain.DeleteUserConfig{
-			BeforeDelete: func(ctx context.Context, user *domain.User) error {
+			BeforeDelete: func(ctx context.Context, user *user.User) error {
 				return expectedError
 			},
-			AfterDelete: func(ctx context.Context, user *domain.User) error {
+			AfterDelete: func(ctx context.Context, user *user.User) error {
 				afterHookCalled = true
 				return nil
 			},
@@ -337,11 +338,11 @@ func TestDeleteUser_AfterHookError_ReturnsError(t *testing.T) {
 	// Set up hooks with after hook that returns an error
 	config.User = &domain.UserConfig{
 		DeleteUser: &domain.DeleteUserConfig{
-			BeforeDelete: func(ctx context.Context, user *domain.User) error {
+			BeforeDelete: func(ctx context.Context, user *user.User) error {
 				beforeHookCalled = true
 				return nil
 			},
-			AfterDelete: func(ctx context.Context, user *domain.User) error {
+			AfterDelete: func(ctx context.Context, user *user.User) error {
 				return expectedError
 			},
 		},

@@ -460,11 +460,11 @@ func TestGetProfile_Valid(t *testing.T) {
 		memory.NewVerificationRepository(),
 	)
 
-	req := &GetProfileRequest{
+	req := &GetMeRequest{
 		UserID: testUser.ID,
 	}
 
-	resp, err := service.GetProfile(req)
+	resp, err := service.GetMe(req)
 	if err != nil {
 		t.Fatalf("GetProfile failed: %v", err)
 	}
@@ -491,11 +491,11 @@ func TestGetProfile_NotFound(t *testing.T) {
 		memory.NewVerificationRepository(),
 	)
 
-	req := &GetProfileRequest{
+	req := &GetMeRequest{
 		UserID: "non-existent-id",
 	}
 
-	_, err := service.GetProfile(req)
+	_, err := service.GetMe(req)
 	if err == nil {
 		t.Fatal("Expected error for non-existent user")
 	}

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
@@ -110,8 +109,7 @@ func (s *Service) sendChangeEmailVerificationAsync(ctx context.Context, u *user.
 	}
 	verifyURL := baseURL + basePath + "/confirm-change-email?token=" + url.QueryEscape(verificationToken)
 
-	// Convert user.User to domain.User
-	domainUser := &domain.User{
+	user := &user.User{
 		ID:            u.ID,
 		Name:          u.Name,
 		Email:         u.Email,
@@ -122,7 +120,7 @@ func (s *Service) sendChangeEmailVerificationAsync(ctx context.Context, u *user.
 	}
 
 	// Send email to new email address
-	if err := s.config.EmailVerification.SendVerificationEmail(ctx, domainUser, verifyURL, verificationToken); err != nil {
+	if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {
 		slog.ErrorContext(ctx, "failed to send change email verification", "user_id", u.ID, "new_email", newEmail, "error", err)
 		return
 	}

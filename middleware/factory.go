@@ -23,7 +23,7 @@ func NewAuthMiddlewareFactory(service *auth.Service, logger *slog.Logger) *AuthM
 	}
 	return &AuthMiddlewareFactory{
 		service:    service,
-		cookieName: "session",
+		cookieName: "session_token",
 		logger:     logger,
 	}
 }

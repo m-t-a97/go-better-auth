@@ -55,19 +55,19 @@ func SetSessionToken(ctx context.Context, token string) context.Context {
 
 // MustGetUserID retrieves the user ID from context and panics if not found
 // Use this in handlers that are protected by AuthMiddleware
-func MustGetUserID(ctx context.Context) string {
+func MustGetUserID(ctx context.Context) (string, error) {
 	userID, err := GetUserID(ctx)
 	if err != nil {
-		panic("user ID not found in context - ensure AuthMiddleware is applied")
+		return "", fmt.Errorf("user ID not found in context - ensure AuthMiddleware is applied")
 	}
-	return userID
+	return userID, nil
 }
 
 // MustGetSessionToken retrieves the session token from context and panics if not found
-func MustGetSessionToken(ctx context.Context) string {
+func MustGetSessionToken(ctx context.Context) (string, error) {
 	token, err := GetSessionToken(ctx)
 	if err != nil {
-		panic("session token not found in context - ensure AuthMiddleware is applied")
+		return "", fmt.Errorf("session token not found in context - ensure AuthMiddleware is applied")
 	}
-	return token
+	return token, nil
 }

@@ -18,41 +18,41 @@ const (
 
 // Account represents a user's authentication account (email, social provider, etc.)
 type Account struct {
-	ID                    string
-	UserID                string
-	AccountID             string // Provider-specific account ID
-	ProviderID            ProviderType
-	AccessToken           *string
-	RefreshToken          *string
-	IDToken               *string
-	AccessTokenExpiresAt  *time.Time
-	RefreshTokenExpiresAt *time.Time
-	Scope                 *string
-	Password              *string // Hashed password for credential provider
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	ID                    string       `json:"id"`
+	UserID                string       `json:"user_id"`
+	AccountID             string       `json:"account_id"`
+	ProviderID            ProviderType `json:"provider_id"`
+	AccessToken           *string      `json:"access_token,omitempty"`
+	RefreshToken          *string      `json:"refresh_token,omitempty"`
+	IDToken               *string      `json:"id_token,omitempty"`
+	AccessTokenExpiresAt  *time.Time   `json:"access_token_expires_at,omitempty"`
+	RefreshTokenExpiresAt *time.Time   `json:"refresh_token_expires_at,omitempty"`
+	Scope                 *string      `json:"scope,omitempty"`
+	Password              *string      `json:"password,omitempty"`
+	CreatedAt             time.Time    `json:"created_at"`
+	UpdatedAt             time.Time    `json:"updated_at"`
 }
 
 // CreateAccountRequest represents a request to create a new account
 type CreateAccountRequest struct {
-	UserID       string
-	ProviderID   ProviderType
-	AccountID    string
-	AccessToken  *string
-	RefreshToken *string
-	IDToken      *string
-	Password     *string // For credential provider only
-	Scope        *string
+	UserID       string       `json:"user_id" validate:"required"`
+	ProviderID   ProviderType `json:"provider_id" validate:"required"`
+	AccountID    string       `json:"account_id" validate:"required"`
+	AccessToken  *string      `json:"access_token,omitempty"`
+	RefreshToken *string      `json:"refresh_token,omitempty"`
+	IDToken      *string      `json:"id_token,omitempty"`
+	Password     *string      `json:"password,omitempty"` // For credential provider only
+	Scope        *string      `json:"scope,omitempty"`
 }
 
 // UpdateAccountRequest represents a request to update an existing account
 type UpdateAccountRequest struct {
-	AccessToken           *string
-	RefreshToken          *string
-	IDToken               *string
-	AccessTokenExpiresAt  *time.Time
-	RefreshTokenExpiresAt *time.Time
-	Scope                 *string
+	AccessToken           *string    `json:"access_token,omitempty"`
+	RefreshToken          *string    `json:"refresh_token,omitempty"`
+	IDToken               *string    `json:"id_token,omitempty"`
+	AccessTokenExpiresAt  *time.Time `json:"access_token_expires_at,omitempty"`
+	RefreshTokenExpiresAt *time.Time `json:"refresh_token_expires_at,omitempty"`
+	Scope                 *string    `json:"scope,omitempty"`
 }
 
 // ValidateCreateAccountRequest validates a create account request

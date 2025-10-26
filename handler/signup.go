@@ -3,7 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
@@ -16,14 +18,12 @@ type SignUpRequest struct {
 
 // SignUpResponse is the HTTP response for user signup
 type SignUpResponse struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	EmailVerified bool   `json:"email_verified"`
+	Token string     `json:"token"`
+	User  *user.User `json:"user"`
 }
 
 // SignUpHandler handles POST /auth/signup
-func SignUpHandler(svc *auth.Service) http.HandlerFunc {
+func SignUpHandler(service *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -37,30 +37,29 @@ func SignUpHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Call use case
-		resp, err := svc.SignUp(r.Context(), &auth.SignUpRequest{
+		resp, err := service.SignUp(r.Context(), &auth.SignUpRequest{
 			Email:    req.Email,
 			Password: req.Password,
 			Name:     req.Name,
 		})
 		if err != nil {
 			// Map error to HTTP status
-			switch err.Error() {
-			case "user with this email already exists":
+			errMsg := err.Error()
+			if errMsg == "sign up is disabled" {
+				ErrorResponse(w, http.StatusForbidden, "sign up is disabled")
+			} else if errMsg == "user with this email already exists" {
 				ErrorResponse(w, http.StatusConflict, "email already registered")
-			case "invalid request":
+			} else if strings.HasPrefix(errMsg, "invalid request:") {
+				ErrorResponse(w, http.StatusBadRequest, errMsg)
+			} else {
 				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
 			}
 			return
 		}
 
-		// Build response
 		httpResp := SignUpResponse{
-			ID:            resp.User.ID,
-			Email:         resp.User.Email,
-			Name:          resp.User.Name,
-			EmailVerified: resp.User.EmailVerified,
+			Token: resp.Session.Token,
+			User:  resp.User,
 		}
 
 		SuccessResponse(w, http.StatusCreated, httpResp)

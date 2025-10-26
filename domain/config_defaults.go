@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain/security"
 )
@@ -16,7 +17,7 @@ const (
 	DefaultSessionUpdateAge      = 86400  // 1 day
 	DefaultMinPasswordLength     = 8
 	DefaultMaxPasswordLength     = 128
-	DefaultVerificationExpiresIn = 3600 // 1 hour
+	DefaultVerificationExpiresIn = 1 * time.Hour
 	DefaultResetPasswordExpiry   = 3600 // 1 hour
 	DefaultRateLimitWindow       = 10
 	DefaultRateLimitMax          = 100

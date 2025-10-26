@@ -3,8 +3,9 @@ package repository
 import (
 	"fmt"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
 	"golang.org/x/oauth2"
+
+	"github.com/m-t-a97/go-better-auth/domain/account"
 )
 
 var discordEndpoint = oauth2.Endpoint{

@@ -57,33 +57,26 @@ func RequestEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 	}
 }
 
-// VerifyEmailRequest is the HTTP request for verifying an email
-type VerifyEmailRequest struct {
-	Token string `json:"token"`
-}
-
-// VerifyEmailResponse is the HTTP response for verifying an email
-type VerifyEmailResponse struct {
-	Message string `json:"message"`
-}
-
-// VerifyEmailHandler handles POST /auth/email-verification/confirm
+// VerifyEmailHandler handles GET /auth/verify-email?token={token}
+// This handler is called when a user clicks the verification link in the email.
+// It extracts the token from the query parameters, validates it, and redirects to a success page.
 func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		if r.Method != http.MethodGet {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		var req VerifyEmailRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			ErrorResponse(w, http.StatusBadRequest, "invalid request body")
+		// Extract token from query parameters
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			ErrorResponse(w, http.StatusBadRequest, "verification token is required")
 			return
 		}
 
-		// Call use case
+		// Call use case to verify email
 		_, err := svc.VerifyEmail(&auth.VerifyEmailRequest{
-			VerificationToken: req.Token,
+			VerificationToken: token,
 		})
 		if err != nil {
 			// Map error to HTTP status
@@ -100,11 +93,20 @@ func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 			return
 		}
 
-		// Build response
-		httpResp := VerifyEmailResponse{
-			Message: "email verified successfully",
+		// Get the redirect URL from config, fallback to login page
+		config := svc.GetConfig()
+		redirectURL := ""
+		if config.EmailVerification != nil && config.EmailVerification.SuccessRedirectURL != "" {
+			redirectURL = config.EmailVerification.SuccessRedirectURL
+		} else if config.BaseURL != "" {
+			// Default redirect to base URL
+			redirectURL = config.BaseURL
+		} else {
+			// Fallback to root
+			redirectURL = "/"
 		}
 
-		SuccessResponse(w, http.StatusOK, httpResp)
+		// Redirect to success page
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	}
 }

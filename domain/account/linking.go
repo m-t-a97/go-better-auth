@@ -26,16 +26,16 @@ func DefaultLinkingRules() LinkingRules {
 
 // LinkAccountRequest represents a request to link an account to an existing user
 type LinkAccountRequest struct {
-	UserID                string       // The user to link the account to
-	ProviderID            ProviderType // The provider of the account to link
-	AccountID             string       // Provider-specific account ID
-	AccessToken           *string
-	RefreshToken          *string
-	IDToken               *string
-	AccessTokenExpiresAt  *time.Time
-	RefreshTokenExpiresAt *time.Time
-	Scope                 *string
-	Password              *string // For credential provider only
+	UserID                string       `json:"user_id"`     // The user to link the account to
+	ProviderID            ProviderType `json:"provider_id"` // The provider of the account to link
+	AccountID             string       `json:"account_id"`  // Provider-specific account ID
+	AccessToken           *string      `json:"access_token,omitempty"`
+	RefreshToken          *string      `json:"refresh_token,omitempty"`
+	IDToken               *string      `json:"id_token,omitempty"`
+	AccessTokenExpiresAt  *time.Time   `json:"access_token_expires_at,omitempty"`
+	RefreshTokenExpiresAt *time.Time   `json:"refresh_token_expires_at,omitempty"`
+	Scope                 *string      `json:"scope,omitempty"`
+	Password              *string      `json:"password,omitempty"` // For credential provider only
 }
 
 // UnlinkAccountRequest represents a request to unlink an account from a user

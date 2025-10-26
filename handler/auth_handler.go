@@ -24,10 +24,11 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	method := r.Method
 
-	// Extract the endpoint (everything after /auth/)
+	// Extract the endpoint by splitting on "/auth/"
+	parts := strings.SplitN(path, "/auth/", 2)
 	endpoint := ""
-	if after, ok := strings.CutPrefix(path, "/auth/"); ok {
-		endpoint = after
+	if len(parts) == 2 {
+		endpoint = parts[1]
 	}
 
 	switch method {
@@ -36,7 +37,9 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "validate":
 			ValidateSessionHandler(h.service)(w, r)
 		case "me":
-			GetProfileHandler(h.service)(w, r)
+			GetMeHandler(h.service)(w, r)
+		case "verify-email":
+			VerifyEmailHandler(h.service)(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -58,8 +61,6 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ResetPasswordHandler(h.service)(w, r)
 		case "email-verification/request":
 			RequestEmailVerificationHandler(h.service)(w, r)
-		case "email-verification/confirm":
-			VerifyEmailHandler(h.service)(w, r)
 		default:
 			http.NotFound(w, r)
 		}

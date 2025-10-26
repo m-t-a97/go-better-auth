@@ -13,12 +13,12 @@ import (
 
 // PostgresTransaction implements adapter.Transaction for PostgreSQL
 type PostgresTransaction struct {
-	tx                *sql.Tx
-	logQueries        bool
-	userRepo          *txUserRepository
-	sessionRepo       *txSessionRepository
-	accountRepo       *txAccountRepository
-	verificationRepo  *txVerificationRepository
+	tx               *sql.Tx
+	logQueries       bool
+	userRepo         *txUserRepository
+	sessionRepo      *txSessionRepository
+	accountRepo      *txAccountRepository
+	verificationRepo *txVerificationRepository
 }
 
 // NewPostgresTransaction creates a new transaction for PostgreSQL

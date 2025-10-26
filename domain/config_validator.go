@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // ValidationError represents a configuration validation error
@@ -191,7 +192,7 @@ func validateEmailVerificationConfig(config *EmailVerificationConfig) error {
 		return nil // Allows default
 	}
 
-	if config.ExpiresIn < 60 {
+	if config.ExpiresIn < 1*time.Minute {
 		return fmt.Errorf("ExpiresIn should be at least 60 seconds")
 	}
 

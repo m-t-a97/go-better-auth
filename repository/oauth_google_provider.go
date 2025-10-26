@@ -3,9 +3,10 @@ package repository
 import (
 	"fmt"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"github.com/m-t-a97/go-better-auth/domain/account"
 )
 
 // GoogleOAuthProvider implements account.OAuthProvider for Google OAuth

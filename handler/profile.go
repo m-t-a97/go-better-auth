@@ -5,27 +5,24 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/middleware"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
-// GetProfileRequest is the HTTP request for getting a user profile
-type GetProfileRequest struct {
+// GetMeRequest is the HTTP request for getting a user profile
+type GetMeRequest struct {
 	UserID string `json:"user_id"`
 }
 
-// GetProfileResponse is the HTTP response for getting a user profile
-type GetProfileResponse struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	EmailVerified bool   `json:"email_verified"`
-	Image         string `json:"image,omitempty"`
+// GetMeResponse is the HTTP response for getting a user profile
+type GetMeResponse struct {
+	User *user.User `json:"user"`
 }
 
-// GetProfileHandler handles GET /auth/me
+// GetMeHandler handles GET /auth/me
 // Requires AuthMiddleware to be applied to extract user ID from context
-func GetProfileHandler(svc *auth.Service) http.HandlerFunc {
+func GetMeHandler(s *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -33,10 +30,14 @@ func GetProfileHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Get user ID from context (set by AuthMiddleware)
-		userID := middleware.MustGetUserID(r.Context())
+		userID, err := middleware.MustGetUserID(r.Context())
+		if err != nil {
+			ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
 		// Call use case
-		resp, err := svc.GetProfile(&auth.GetProfileRequest{
+		resp, err := s.GetMe(&auth.GetMeRequest{
 			UserID: userID,
 		})
 		if err != nil {
@@ -52,18 +53,9 @@ func GetProfileHandler(svc *auth.Service) http.HandlerFunc {
 			return
 		}
 
-		// Build response
-		httpResp := GetProfileResponse{
-			ID:            resp.User.ID,
-			Email:         resp.User.Email,
-			Name:          resp.User.Name,
-			EmailVerified: resp.User.EmailVerified,
-		}
-		if resp.User.Image != nil {
-			httpResp.Image = *resp.User.Image
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
+		SuccessResponse(w, http.StatusOK, GetMeResponse{
+			User: resp.User,
+		})
 	}
 }
 
@@ -92,7 +84,11 @@ func UpdateProfileHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Get user ID from context (set by AuthMiddleware)
-		userID := middleware.MustGetUserID(r.Context())
+		userID, err := middleware.MustGetUserID(r.Context())
+		if err != nil {
+			ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
 		// Parse request body
 		var req UpdateProfileRequest
@@ -156,7 +152,11 @@ func DeleteProfileHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Get user ID from context (set by AuthMiddleware)
-		userID := middleware.MustGetUserID(r.Context())
+		userID, err := middleware.MustGetUserID(r.Context())
+		if err != nil {
+			ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
 		// For security, require confirmation password in request body
 		var req DeleteProfileRequest
@@ -216,7 +216,11 @@ func RequestChangeEmailHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Get user ID from context (set by AuthMiddleware)
-		userID := middleware.MustGetUserID(r.Context())
+		userID, err := middleware.MustGetUserID(r.Context())
+		if err != nil {
+			ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
 		// Parse request body
 		var req RequestChangeEmailRequest
@@ -285,7 +289,11 @@ func ConfirmChangeEmailHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Get user ID from context (set by AuthMiddleware)
-		userID := middleware.MustGetUserID(r.Context())
+		userID, err := middleware.MustGetUserID(r.Context())
+		if err != nil {
+			ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
 		// Parse request body
 		var req ConfirmChangeEmailRequest

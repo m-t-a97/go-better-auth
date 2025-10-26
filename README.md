@@ -80,6 +80,7 @@ For comprehensive configuration examples, see [EXAMPLES.md](./EXAMPLES.md).
 Go Better Auth is initialized via the `gobetterauth.New(config)` function, which takes a `domain.Config` struct. The library provides built-in HTTP handlers that implement all authentication endpoints.
 
 **Architecture Overview:**
+
 ```
 ┌─────────────────────────┐
 │ Your Application        │
@@ -127,25 +128,33 @@ Go Better Auth provides a flexible, comprehensive configuration system. Configur
 ### Core Configuration
 
 #### AppName
+
 Application name for identification:
+
 ```go
 AppName: "My Application"
 ```
 
 #### BaseURL
+
 Base URL for your application. Auto-detects from `GO_BETTER_AUTH_URL` environment variable:
+
 ```go
 BaseURL: "https://example.com"
 ```
 
 #### BasePath
+
 Base path for auth routes (default: `/api/auth`):
+
 ```go
 BasePath: "/api/auth"
 ```
 
 #### TrustedOrigins
+
 Configure CORS trusted origins with static origins, dynamic functions, and wildcard support:
+
 ```go
 TrustedOrigins: domain.TrustedOriginsConfig{
     StaticOrigins: []string{
@@ -161,7 +170,9 @@ TrustedOrigins: domain.TrustedOriginsConfig{
 ```
 
 #### Secret
+
 Secret key for encryption, signing, and hashing. Auto-detects from `GO_BETTER_AUTH_SECRET` or `AUTH_SECRET` environment variables. **Required in production**:
+
 ```go
 Secret: "your-secret-key-here"
 ```
@@ -169,7 +180,9 @@ Secret: "your-secret-key-here"
 ### Database Configuration
 
 #### DatabaseConfig
+
 Configure database connection and settings:
+
 ```go
 Database: domain.DatabaseConfig{
     Provider:          "postgres",  // "sqlite" or "postgres"
@@ -182,7 +195,9 @@ Database: domain.DatabaseConfig{
 ### Authentication Methods
 
 #### EmailAndPassword
+
 Enable email and password authentication:
+
 ```go
 EmailAndPassword: &domain.EmailPasswordConfig{
     Enabled:                  true,
@@ -213,7 +228,9 @@ EmailAndPassword: &domain.EmailPasswordConfig{
 ```
 
 #### EmailVerification
+
 Configure email verification workflow:
+
 ```go
 EmailVerification: &domain.EmailVerificationConfig{
     SendVerificationEmail: func(ctx context.Context, user *domain.User, url string, token string) error {
@@ -229,7 +246,9 @@ EmailVerification: &domain.EmailVerificationConfig{
 ```
 
 #### SocialProviders
+
 Configure OAuth providers:
+
 ```go
 SocialProviders: &domain.SocialProvidersConfig{
     Google: &domain.GoogleProviderConfig{
@@ -274,7 +293,9 @@ SocialProviders: &domain.SocialProvidersConfig{
 ### Session Management
 
 #### Session
+
 Customize session behavior:
+
 ```go
 Session: &domain.SessionConfig{
     ModelName:             "session",
@@ -302,7 +323,9 @@ Session: &domain.SessionConfig{
 ### User Management
 
 #### User
+
 Configure user model customization:
+
 ```go
 User: &domain.UserConfig{
     ModelName: "user",
@@ -343,7 +366,9 @@ User: &domain.UserConfig{
 ### Account Management
 
 #### Account
+
 Configure account linking and OAuth settings:
+
 ```go
 Account: &domain.AccountConfig{
     ModelName: "account",
@@ -366,7 +391,9 @@ Account: &domain.AccountConfig{
 ### Verification Management
 
 #### Verification
+
 Configure verification token storage:
+
 ```go
 Verification: &domain.VerificationConfig{
     ModelName: "verification",
@@ -380,7 +407,9 @@ Verification: &domain.VerificationConfig{
 ### Rate Limiting
 
 #### RateLimit
+
 Configure rate limiting to prevent abuse:
+
 ```go
 RateLimit: &domain.RateLimitOptions{
     Enabled:   true,
@@ -411,6 +440,7 @@ RateLimit: &domain.RateLimitOptions{
 - **Sliding Window**: Uses weighted counts from current and previous windows for smoother rate limiting. Prevents boundary bursts by gradually transitioning between windows. Slightly more computation but provides better distribution of requests over time.
 
 Example with sliding window:
+
 ```go
 RateLimit: &domain.RateLimitOptions{
     Enabled:   true,
@@ -423,7 +453,9 @@ RateLimit: &domain.RateLimitOptions{
 ### Advanced Configuration
 
 #### Advanced
+
 Configure advanced security and cookie settings:
+
 ```go
 Advanced: &domain.AdvancedConfig{
     IPAddress: &domain.IPAddressConfig{
@@ -476,7 +508,9 @@ Advanced: &domain.AdvancedConfig{
 ### Logging Configuration
 
 #### Logger
+
 Configure logging behavior:
+
 ```go
 Logger: &domain.LoggerConfig{
     Disabled:     false,
@@ -492,7 +526,9 @@ Logger: &domain.LoggerConfig{
 ### Database Hooks
 
 #### DatabaseHooks
+
 Add lifecycle hooks for database operations:
+
 ```go
 DatabaseHooks: &domain.DatabaseHooksConfig{
     User: &domain.ModelHooks{
@@ -524,7 +560,9 @@ DatabaseHooks: &domain.DatabaseHooksConfig{
 ### API Error Handling
 
 #### OnAPIError
+
 Configure custom error handling:
+
 ```go
 OnAPIError: &domain.OnAPIErrorConfig{
     Throw:    false,
@@ -538,7 +576,9 @@ OnAPIError: &domain.OnAPIErrorConfig{
 ### Request Lifecycle Hooks
 
 #### Hooks
+
 Add request lifecycle hooks:
+
 ```go
 Hooks: &domain.HooksConfig{
     Before: func(ctx *domain.RequestContext) error {
@@ -555,7 +595,9 @@ Hooks: &domain.HooksConfig{
 ### Plugins
 
 #### Plugins
+
 Extend functionality with plugins:
+
 ```go
 Plugins: []domain.Plugin{
     &MyCustomPlugin{},
@@ -573,6 +615,7 @@ Go Better Auth automatically reads from environment variables:
 ### Default Values
 
 Sensible defaults are applied:
+
 - **BaseURL**: `http://localhost:8080`
 - **BasePath**: `/api/auth`
 - **Session.ExpiresIn**: 604800 seconds (7 days)
@@ -796,7 +839,7 @@ Contributions are welcome! Please follow these guidelines:
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+Apache 2.0 License - see LICENSE file for details
 
 ---
 

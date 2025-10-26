@@ -45,19 +45,18 @@ func TestGetUserID_Empty(t *testing.T) {
 func TestMustGetUserID_Success(t *testing.T) {
 	ctx := SetUserID(context.Background(), "user-123")
 
-	userID := MustGetUserID(ctx)
+	userID, err := MustGetUserID(ctx)
+	assert.NoError(t, err)
 	assert.Equal(t, "user-123", userID)
 }
 
-func TestMustGetUserID_Panic(t *testing.T) {
-	defer func() {
-		r := recover()
-		assert.NotNil(t, r)
-		assert.Contains(t, r.(string), "user ID not found in context")
-	}()
-
+func TestMustGetUserID_Error(t *testing.T) {
 	ctx := context.Background()
-	MustGetUserID(ctx)
+
+	userID, err := MustGetUserID(ctx)
+	assert.Error(t, err)
+	assert.Equal(t, "", userID)
+	assert.Contains(t, err.Error(), "user ID not found in context")
 }
 
 func TestGetSessionToken_Success(t *testing.T) {

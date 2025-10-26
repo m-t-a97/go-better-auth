@@ -22,7 +22,7 @@ type ValidateSessionResponse struct {
 }
 
 // ValidateSessionHandler handles GET /auth/validate
-func ValidateSessionHandler(svc *auth.Service) http.HandlerFunc {
+func ValidateSessionHandler(s *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -41,21 +41,13 @@ func ValidateSessionHandler(svc *auth.Service) http.HandlerFunc {
 			}
 		}
 
-		// If no token in header and POST, try request body
-		if token == "" && r.Method == http.MethodPost {
-			var req ValidateSessionRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.Token != "" {
-				token = req.Token
-			}
-		}
-
 		if token == "" {
 			ErrorResponse(w, http.StatusBadRequest, "session token required")
 			return
 		}
 
 		// Call use case
-		resp, err := svc.ValidateSession(&auth.ValidateSessionRequest{
+		resp, err := s.ValidateSession(&auth.ValidateSessionRequest{
 			SessionToken: token,
 		})
 		if err != nil {

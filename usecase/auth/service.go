@@ -90,3 +90,8 @@ func NewService(
 func (s *Service) SetBruteForceService(service *security_protection.BruteForceService) {
 	s.bruteForceService = service
 }
+
+// GetConfig returns the configuration
+func (s *Service) GetConfig() *domain.Config {
+	return s.config
+}

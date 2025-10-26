@@ -46,7 +46,7 @@ func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {
 
 	// Sign up a user
 	signupBody := `{"email":"test@example.com","password":"password123","name":"Test User"}`
-	req := httptest.NewRequest("POST", "/auth/signup/email", strings.NewReader(signupBody))
+	req := httptest.NewRequest("POST", "/auth/sign-up/email", strings.NewReader(signupBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -57,7 +57,7 @@ func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {
 
 	// Sign in
 	signinBody := `{"email":"test@example.com","password":"password123"}`
-	req = httptest.NewRequest("POST", "/auth/signin/email", strings.NewReader(signinBody))
+	req = httptest.NewRequest("POST", "/auth/sign-in/email", strings.NewReader(signinBody))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -134,7 +134,7 @@ func TestAuth_WithSecondaryStorage_RateLimiting(t *testing.T) {
 	handler := auth.Handler()
 
 	// Make requests up to the limit
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		req := httptest.NewRequest("GET", "/auth/validate", nil)
 		req.RemoteAddr = "192.168.1.1:12345"
 		w := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func TestAuth_WithSecondaryStorage_CustomRateLimits(t *testing.T) {
 			Window:  10,
 			Max:     10, // Default: 10 requests
 			CustomRules: map[string]domain.RateLimitRule{
-				"/auth/signin*": {
+				"/auth/sign-in*": {
 					Window: 10,
 					Max:    2, // Signin: only 2 requests
 				},
@@ -211,7 +211,7 @@ func TestAuth_WithSecondaryStorage_CustomRateLimits(t *testing.T) {
 	// Make 2 signin requests (should be allowed)
 	for i := 0; i < 2; i++ {
 		signinBody := `{"email":"test@example.com","password":"wrong"}`
-		req := httptest.NewRequest("POST", "/auth/signin/email", strings.NewReader(signinBody))
+		req := httptest.NewRequest("POST", "/auth/sign-in/email", strings.NewReader(signinBody))
 		req.Header.Set("Content-Type", "application/json")
 		req.RemoteAddr = "192.168.1.1:12345"
 		w := httptest.NewRecorder()
@@ -224,7 +224,7 @@ func TestAuth_WithSecondaryStorage_CustomRateLimits(t *testing.T) {
 
 	// Third signin request should be rate limited
 	signinBody := `{"email":"test@example.com","password":"wrong"}`
-	req := httptest.NewRequest("POST", "/auth/signin/email", strings.NewReader(signinBody))
+	req := httptest.NewRequest("POST", "/auth/sign-in/email", strings.NewReader(signinBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "192.168.1.1:12345"
 	w := httptest.NewRecorder()
@@ -320,13 +320,13 @@ func TestAuth_SecondaryStorage_Expiration(t *testing.T) {
 
 	// Sign up and sign in
 	signupBody := `{"email":"test@example.com","password":"password123","name":"Test User"}`
-	req := httptest.NewRequest("POST", "/auth/signup/email", strings.NewReader(signupBody))
+	req := httptest.NewRequest("POST", "/auth/sign-up/email", strings.NewReader(signupBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	signinBody := `{"email":"test@example.com","password":"password123"}`
-	req = httptest.NewRequest("POST", "/auth/signin/email", strings.NewReader(signinBody))
+	req = httptest.NewRequest("POST", "/auth/sign-in/email", strings.NewReader(signinBody))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	handler.ServeHTTP(w, req)

@@ -7,14 +7,14 @@ import (
 
 // Session represents an active user session
 type Session struct {
-	ID        string
-	UserID    string
-	ExpiresAt time.Time
-	Token     string
-	IPAddress *string
-	UserAgent *string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Token     string    `json:"token"`
+	IPAddress *string   `json:"ip_address,omitempty"`
+	UserAgent *string   `json:"user_agent,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CreateSessionRequest represents a request to create a new session

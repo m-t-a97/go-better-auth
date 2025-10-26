@@ -6,20 +6,20 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain/user"
 )
 
-// GetProfileRequest contains the request data for getting user profile
-type GetProfileRequest struct {
+// GetMeRequest contains the request data for getting user information
+type GetMeRequest struct {
 	UserID string
 }
 
-// GetProfileResponse contains the response data for getting user profile
-type GetProfileResponse struct {
+// GetMeResponse contains the response data for getting user information
+type GetMeResponse struct {
 	User *user.User
 }
 
-// GetProfile is the use case for retrieving a user's profile information
-func (s *Service) GetProfile(req *GetProfileRequest) (*GetProfileResponse, error) {
+// GetMe is the use case for retrieving a user's information
+func (s *Service) GetMe(req *GetMeRequest) (*GetMeResponse, error) {
 	if req == nil {
-		return nil, fmt.Errorf("get profile request cannot be nil")
+		return nil, fmt.Errorf("get me request cannot be nil")
 	}
 
 	if req.UserID == "" {
@@ -27,16 +27,16 @@ func (s *Service) GetProfile(req *GetProfileRequest) (*GetProfileResponse, error
 	}
 
 	// Find user by ID
-	u, err := s.userRepo.FindByID(req.UserID)
+	userFound, err := s.userRepo.FindByID(req.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if u == nil {
+	if userFound == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return &GetProfileResponse{
-		User: u,
+	return &GetMeResponse{
+		User: userFound,
 	}, nil
 }

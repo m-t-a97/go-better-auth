@@ -7,19 +7,21 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/google/uuid"
+
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // RequestEmailVerificationRequest contains the request data for requesting email verification
 type RequestEmailVerificationRequest struct {
-	Email string
+	Email string `json:"email"`
 }
 
 // RequestEmailVerificationResponse contains the response data for requesting email verification
 type RequestEmailVerificationResponse struct {
-	Verification *verification.Verification
+	Verification *verification.Verification `json:"verification"`
 }
 
 // RequestEmailVerification is the use case for requesting email verification
@@ -40,6 +42,7 @@ func (s *Service) RequestEmailVerification(ctx context.Context, req *RequestEmai
 
 	// Create verification record
 	v := &verification.Verification{
+		ID:         uuid.New().String(),
 		Identifier: req.Email,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailVerification,
@@ -55,19 +58,9 @@ func (s *Service) RequestEmailVerification(ctx context.Context, req *RequestEmai
 	// Send verification email if configured
 	if s.config.EmailVerification != nil && s.config.EmailVerification.SendVerificationEmail != nil {
 		// Find user by email
-		u, err := s.userRepo.FindByEmail(req.Email)
-		if err == nil && u != nil {
-			// Convert user.User to domain.User
-			domainUser := &domain.User{
-				ID:            u.ID,
-				Name:          u.Name,
-				Email:         u.Email,
-				EmailVerified: u.EmailVerified,
-				Image:         u.Image,
-				CreatedAt:     u.CreatedAt,
-				UpdatedAt:     u.UpdatedAt,
-			}
-			go s.sendVerificationEmailForRequestAsync(ctx, domainUser, verificationToken)
+		user, err := s.userRepo.FindByEmail(req.Email)
+		if err == nil && user != nil {
+			go s.sendVerificationEmailForRequestAsync(ctx, user, verificationToken)
 		}
 	}
 
@@ -77,7 +70,7 @@ func (s *Service) RequestEmailVerification(ctx context.Context, req *RequestEmai
 }
 
 // sendVerificationEmailForRequestAsync sends a verification email asynchronously for manual verification requests
-func (s *Service) sendVerificationEmailForRequestAsync(ctx context.Context, u *domain.User, verificationToken string) {
+func (s *Service) sendVerificationEmailForRequestAsync(ctx context.Context, u *user.User, verificationToken string) {
 	// Build verification URL
 	baseURL := s.config.BaseURL
 	basePath := s.config.BasePath
@@ -97,12 +90,13 @@ func (s *Service) sendVerificationEmailForRequestAsync(ctx context.Context, u *d
 
 // VerifyEmailRequest contains the request data for verifying an email
 type VerifyEmailRequest struct {
-	VerificationToken string
+	VerificationToken string `json:"verification_token"`
 }
 
 // VerifyEmailResponse contains the response data for verifying an email
 type VerifyEmailResponse struct {
-	Success bool
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 // VerifyEmail is the use case for verifying a user's email address
@@ -131,20 +125,20 @@ func (s *Service) VerifyEmail(req *VerifyEmailRequest) (*VerifyEmailResponse, er
 	}
 
 	// Find user by email
-	u, err := s.userRepo.FindByEmail(v.Identifier)
+	userFound, err := s.userRepo.FindByEmail(v.Identifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if u == nil {
+	if userFound == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
 	// Mark email as verified
-	u.EmailVerified = true
-	u.UpdatedAt = time.Now()
+	userFound.EmailVerified = true
+	userFound.UpdatedAt = time.Now()
 
-	if err := s.userRepo.Update(u); err != nil {
+	if err := s.userRepo.Update(userFound); err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
@@ -153,5 +147,6 @@ func (s *Service) VerifyEmail(req *VerifyEmailRequest) (*VerifyEmailResponse, er
 
 	return &VerifyEmailResponse{
 		Success: true,
+		Message: "Email verified.",
 	}, nil
 }

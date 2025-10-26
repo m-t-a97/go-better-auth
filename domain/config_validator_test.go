@@ -371,7 +371,7 @@ func TestConfigValidationResult_Error_Valid(t *testing.T) {
 
 func TestValidateEmailVerificationConfig_Valid(t *testing.T) {
 	config := &EmailVerificationConfig{
-		ExpiresIn: 3600,
+		ExpiresIn: 1 * time.Hour,
 	}
 
 	err := validateEmailVerificationConfig(config)
@@ -380,7 +380,7 @@ func TestValidateEmailVerificationConfig_Valid(t *testing.T) {
 
 func TestValidateEmailVerificationConfig_TooSmall(t *testing.T) {
 	config := &EmailVerificationConfig{
-		ExpiresIn: 30, // Less than 60
+		ExpiresIn: 30 * time.Second, // Less than a minute
 	}
 
 	err := validateEmailVerificationConfig(config)

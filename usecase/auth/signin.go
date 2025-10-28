@@ -17,10 +17,11 @@ import (
 
 // SignInRequest contains the request data for sign in
 type SignInRequest struct {
-	Email     string
-	Password  string
-	IPAddress string
-	UserAgent string
+	Email       string
+	Password    string
+	CallbackURL string
+	IPAddress   string
+	UserAgent   string
 }
 
 // SignInResponse contains the response data for sign in
@@ -137,7 +138,12 @@ func (s *Service) SignIn(ctx context.Context, req *SignInRequest) (*SignInRespon
 				if basePath == "" {
 					basePath = "/api/auth"
 				}
-				verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
+
+				callbackURLValue := ""
+				if req.CallbackURL != "" {
+					callbackURLValue = "&callbackURL=" + url.QueryEscape(req.CallbackURL)
+				}
+				verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken) + callbackURLValue
 
 				// Send email asynchronously
 				go func() {

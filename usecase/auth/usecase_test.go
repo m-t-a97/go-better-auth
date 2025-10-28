@@ -318,11 +318,14 @@ func TestResetPassword_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestRequestEmailVerification_Valid(t *testing.T) {
+func TestSendEmailVerification_Valid(t *testing.T) {
 	verificationRepo := memory.NewVerificationRepository()
 
+	config := createTestConfig()
+	config.EmailVerification.Enabled = true
+
 	service := NewService(
-		createTestConfig(),
+		config,
 		memory.NewUserRepository(),
 		memory.NewSessionRepository(),
 		memory.NewAccountRepository(),
@@ -330,31 +333,17 @@ func TestRequestEmailVerification_Valid(t *testing.T) {
 	)
 
 	email := "verify@example.com"
-	req := &RequestEmailVerificationRequest{
+	req := &SendEmailVerificationRequest{
 		Email: email,
 	}
 
-	resp, err := service.RequestEmailVerification(context.Background(), req)
+	resp, err := service.SendEmailVerification(context.Background(), req)
 	if err != nil {
-		t.Fatalf("RequestEmailVerification failed: %v", err)
+		t.Fatalf("SendEmailVerification failed: %v", err)
 	}
 
-	if resp.Verification == nil {
-		t.Fatal("RequestEmailVerification returned nil verification")
-	}
-
-	if resp.Verification.Type != verification.TypeEmailVerification {
-		t.Errorf("Expected verification type %s, got %s", verification.TypeEmailVerification, resp.Verification.Type)
-	}
-
-	if resp.Verification.Identifier != email {
-		t.Errorf("Expected identifier %s, got %s", email, resp.Verification.Identifier)
-	}
-
-	// Verify token is stored
-	v, err := verificationRepo.FindByToken(resp.Verification.Token)
-	if err != nil || v == nil {
-		t.Error("Expected verification token to be stored")
+	if resp.Status == false {
+		t.Fatal("SendEmailVerification returned false status")
 	}
 }
 
@@ -386,13 +375,17 @@ func TestVerifyEmail_Valid(t *testing.T) {
 		VerificationToken: verificationToken,
 	}
 
-	resp, err := service.VerifyEmail(req)
+	resp, err := service.VerifyEmail(context.Background(), req)
 	if err != nil {
 		t.Fatalf("VerifyEmail failed: %v", err)
 	}
 
-	if !resp.Success {
-		t.Error("Expected email verification to succeed")
+	if resp == nil {
+		t.Fatal("VerifyEmail returned nil response")
+	}
+
+	if !resp.Status {
+		t.Fatal("VerifyEmail returned false status")
 	}
 
 	// Verify email is now verified
@@ -439,7 +432,7 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 		VerificationToken: expiredToken,
 	}
 
-	_, err := service.VerifyEmail(req)
+	_, err := service.VerifyEmail(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error for expired token")
 	}

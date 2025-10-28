@@ -11,9 +11,10 @@ import (
 
 // SignUpRequest is the HTTP request for user signup
 type SignUpRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	Name        string `json:"name"`
+	CallbackURL string `json:"callback_url,omitempty"`
 }
 
 // SignUpResponse is the HTTP response for user signup
@@ -36,14 +37,13 @@ func SignUpHandler(service *auth.Service) http.HandlerFunc {
 			return
 		}
 
-		// Call use case
 		resp, err := service.SignUp(r.Context(), &auth.SignUpRequest{
-			Email:    req.Email,
-			Password: req.Password,
-			Name:     req.Name,
+			Email:       req.Email,
+			Password:    req.Password,
+			Name:        req.Name,
+			CallbackURL: req.CallbackURL,
 		})
 		if err != nil {
-			// Map error to HTTP status
 			errMsg := err.Error()
 			if errMsg == "sign up is disabled" {
 				ErrorResponse(w, http.StatusForbidden, "sign up is disabled")
@@ -57,11 +57,9 @@ func SignUpHandler(service *auth.Service) http.HandlerFunc {
 			return
 		}
 
-		httpResp := SignUpResponse{
+		SuccessResponse(w, http.StatusCreated, &SignUpResponse{
 			Token: resp.Session.Token,
 			User:  resp.User,
-		}
-
-		SuccessResponse(w, http.StatusCreated, httpResp)
+		})
 	}
 }

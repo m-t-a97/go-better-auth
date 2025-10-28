@@ -225,6 +225,9 @@ type RedisConfig struct {
 
 // EmailVerificationConfig holds email verification configuration
 type EmailVerificationConfig struct {
+	// Enabled enables email verification feature (default: false)
+	Enabled bool
+
 	// SendVerificationEmail is a function to send verification emails
 	SendVerificationEmail func(ctx context.Context, user *user.User, url string, token string) error
 
@@ -239,10 +242,6 @@ type EmailVerificationConfig struct {
 
 	// ExpiresIn is the duration the verification token is valid for (default: 1 hour)
 	ExpiresIn time.Duration
-
-	// SuccessRedirectURL is the URL to redirect to after successful email verification
-	// If not provided, defaults to BaseURL
-	SuccessRedirectURL string
 }
 
 // PasswordConfig holds custom password hashing and verification

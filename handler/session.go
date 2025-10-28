@@ -51,7 +51,7 @@ func ValidateSessionHandler(s *auth.Service) http.HandlerFunc {
 			SessionToken: token,
 		})
 		if err != nil {
-			ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+			ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -116,7 +116,7 @@ func RefreshTokenHandler(svc *auth.Service) http.HandlerFunc {
 			case "session has expired":
 				ErrorResponse(w, http.StatusUnauthorized, "session expired")
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}

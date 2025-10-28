@@ -85,10 +85,10 @@ func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 		slog.Debug("executing query", "query", query)
 	}
 
-	var u user.User
+	var user user.User
 	err := r.db.QueryRow(query, email).Scan(
-		&u.ID, &u.Name, &u.Email, &u.EmailVerified, &u.Image,
-		&u.CreatedAt, &u.UpdatedAt,
+		&user.ID, &user.Name, &user.Email, &user.EmailVerified, &user.Image,
+		&user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -98,7 +98,7 @@ func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
-	return &u, nil
+	return &user, nil
 }
 
 // Update updates an existing user

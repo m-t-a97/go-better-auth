@@ -56,14 +56,17 @@ CREATE INDEX IF NOT EXISTS idx_accounts_account_provider ON accounts(account_id,
 -- Verifications table (for email verification, password reset tokens, and email change tokens)
 CREATE TABLE IF NOT EXISTS verifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
   identifier VARCHAR(255) NOT NULL,
   token VARCHAR(512) UNIQUE NOT NULL,
   type VARCHAR(50) NOT NULL,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_verifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_verifications_user_id ON verifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
 CREATE INDEX IF NOT EXISTS idx_verifications_token ON verifications(token);
 CREATE INDEX IF NOT EXISTS idx_verifications_type ON verifications(type);

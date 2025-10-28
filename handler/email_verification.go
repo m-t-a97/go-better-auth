@@ -7,34 +7,35 @@ import (
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
 
-// RequestEmailVerificationRequest is the HTTP request for requesting email verification
-type RequestEmailVerificationRequest struct {
-	Email string `json:"email"`
+// SendEmailVerificationRequest is the HTTP request for requesting email verification
+type SendEmailVerificationRequest struct {
+	Email       string `json:"email"`
+	CallbackURL string `json:"callback_url,omitempty"`
 }
 
-// RequestEmailVerificationResponse is the HTTP response for requesting email verification
-type RequestEmailVerificationResponse struct {
-	Message string `json:"message"`
-	Token   string `json:"token"`
+// SendEmailVerificationResponse is the HTTP response for requesting email verification
+type SendEmailVerificationResponse struct {
+	Status bool `json:"status"`
 }
 
-// RequestEmailVerificationHandler handles POST /auth/email-verification/request
-func RequestEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
+// SendEmailVerificationHandler handles POST /auth/send-email-verification
+func SendEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		var req RequestEmailVerificationRequest
+		var req SendEmailVerificationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			ErrorResponse(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
 
 		// Call use case
-		resp, err := svc.RequestEmailVerification(r.Context(), &auth.RequestEmailVerificationRequest{
-			Email: req.Email,
+		resp, err := svc.SendEmailVerification(r.Context(), &auth.SendEmailVerificationRequest{
+			Email:       req.Email,
+			CallbackURL: req.CallbackURL,
 		})
 		if err != nil {
 			// Map error to HTTP status
@@ -42,40 +43,62 @@ func RequestEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 			case "email is required":
 				ErrorResponse(w, http.StatusBadRequest, err.Error())
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
 
-		// Build response
-		httpResp := RequestEmailVerificationResponse{
-			Message: "verification email sent",
-			Token:   resp.Verification.Token,
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
+		SuccessResponse(w, http.StatusOK, &SendEmailVerificationResponse{
+			Status: resp.Status,
+		})
 	}
 }
 
-// VerifyEmailHandler handles GET /auth/verify-email?token={token}
-// This handler is called when a user clicks the verification link in the email.
-// It extracts the token from the query parameters, validates it, and redirects to a success page.
+// VerifyEmailResponse is the HTTP response for verifying email
+type VerifyEmailResponse struct {
+	Status bool `json:"status"`
+}
+
+// VerifyEmailHandler handles GET /auth/verify-email?token={token}&callbackURL={callbackURL} OR POST /auth/verify-email
+// This unified handler verifies all types of verification tokens:
+// - Email verification
+// - Email change confirmation
+// - Password reset confirmation
+// It extracts the token from query parameters or POST body, validates it, and redirects to a success page or returns a response.
 func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		var token string
+
+		// Handle both GET and POST methods
+		switch r.Method {
+		case http.MethodGet:
+			// Extract token from query parameters
+			token = r.URL.Query().Get("token")
+			if token == "" {
+				ErrorResponse(w, http.StatusBadRequest, "verification token is required")
+				return
+			}
+		case http.MethodPost:
+			// Extract token from JSON body
+			var req struct {
+				Token string `json:"token"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				ErrorResponse(w, http.StatusBadRequest, "invalid request body")
+				return
+			}
+			token = req.Token
+			if token == "" {
+				ErrorResponse(w, http.StatusBadRequest, "verification token is required")
+				return
+			}
+		default:
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 
-		// Extract token from query parameters
-		token := r.URL.Query().Get("token")
-		if token == "" {
-			ErrorResponse(w, http.StatusBadRequest, "verification token is required")
-			return
-		}
-
-		// Call use case to verify email
-		_, err := svc.VerifyEmail(&auth.VerifyEmailRequest{
+		// Call unified use case to verify email
+		resp, err := svc.VerifyEmail(r.Context(), &auth.VerifyEmailRequest{
 			VerificationToken: token,
 		})
 		if err != nil {
@@ -87,26 +110,27 @@ func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 				ErrorResponse(w, http.StatusUnauthorized, "invalid or expired verification token")
 			case "verification token has expired":
 				ErrorResponse(w, http.StatusUnauthorized, "verification token has expired")
+			case "user not found":
+				ErrorResponse(w, http.StatusNotFound, "user not found")
+			case "email is already in use":
+				ErrorResponse(w, http.StatusConflict, err.Error())
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
 
-		// Get the redirect URL from config, fallback to login page
-		config := svc.GetConfig()
-		redirectURL := ""
-		if config.EmailVerification != nil && config.EmailVerification.SuccessRedirectURL != "" {
-			redirectURL = config.EmailVerification.SuccessRedirectURL
-		} else if config.BaseURL != "" {
-			// Default redirect to base URL
-			redirectURL = config.BaseURL
-		} else {
-			// Fallback to root
-			redirectURL = "/"
+		// Extract optional callbackURL for GET requests to support redirects
+		if r.Method == http.MethodGet {
+			callbackURL := r.URL.Query().Get("callbackURL")
+			if callbackURL != "" {
+				http.Redirect(w, r, callbackURL, http.StatusSeeOther)
+				return
+			}
 		}
 
-		// Redirect to success page
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		SuccessResponse(w, http.StatusOK, &VerifyEmailResponse{
+			Status: resp.Status,
+		})
 	}
 }

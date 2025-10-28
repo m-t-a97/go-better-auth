@@ -36,7 +36,7 @@ dev: ## Run with hot reload (requires air)
 # Test commands
 test: ## Run tests
 	@echo "Running tests..."
-	@CGO_ENABLED=1 go test -v ./...
+	@CGO_ENABLED=1 go test -failfast -v ./...
 
 test-coverage: ## Run tests with coverage
 	@echo "Running tests with coverage..."

@@ -62,6 +62,9 @@ func (c *Config) ApplyDefaults() {
 	}
 
 	// Apply EmailVerification defaults
+	if c.EmailVerification == nil {
+		c.EmailVerification = &EmailVerificationConfig{}
+	}
 	if c.EmailVerification != nil {
 		if c.EmailVerification.ExpiresIn == 0 {
 			c.EmailVerification.ExpiresIn = DefaultVerificationExpiresIn
@@ -87,6 +90,12 @@ func (c *Config) ApplyDefaults() {
 	}
 	if c.User.ModelName == "" {
 		c.User.ModelName = "user"
+	}
+	if c.User.ChangeEmail == nil {
+		c.User.ChangeEmail = &ChangeEmailConfig{}
+	}
+	if c.User.DeleteUser == nil {
+		c.User.DeleteUser = &DeleteUserConfig{}
 	}
 
 	// Apply Session defaults

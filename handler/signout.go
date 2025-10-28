@@ -56,7 +56,7 @@ func SignOutHandler(svc *auth.Service) http.HandlerFunc {
 			case "session not found":
 				ErrorResponse(w, http.StatusUnauthorized, "invalid session")
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}

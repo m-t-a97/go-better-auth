@@ -30,7 +30,7 @@ func (r *VerificationRepository) Create(v *verification.Verification) error {
 	}
 
 	query := `
-		INSERT INTO verifications (id, identifier, token, type, expires_at, created_at, updated_at)
+		INSERT INTO verifications (user_id, identifier, token, type, expires_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
@@ -38,7 +38,7 @@ func (r *VerificationRepository) Create(v *verification.Verification) error {
 		slog.Debug("executing query", "query", query)
 	}
 
-	_, err := r.db.Exec(query, v.ID, v.Identifier, v.Token, v.Type, v.ExpiresAt, v.CreatedAt, v.UpdatedAt)
+	_, err := r.db.Exec(query, v.UserID, v.Identifier, v.Token, v.Type, v.ExpiresAt, v.CreatedAt, v.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create verification: %w", err)
 	}
@@ -49,7 +49,7 @@ func (r *VerificationRepository) Create(v *verification.Verification) error {
 // FindByID retrieves a verification record by ID
 func (r *VerificationRepository) FindByID(id string) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE id = $1
 	`
@@ -60,7 +60,7 @@ func (r *VerificationRepository) FindByID(id string) (*verification.Verification
 
 	var v verification.Verification
 	err := r.db.QueryRow(query, id).Scan(
-		&v.ID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -76,7 +76,7 @@ func (r *VerificationRepository) FindByID(id string) (*verification.Verification
 // FindByToken retrieves a verification record by token
 func (r *VerificationRepository) FindByToken(token string) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE token = $1
 	`
@@ -87,7 +87,7 @@ func (r *VerificationRepository) FindByToken(token string) (*verification.Verifi
 
 	var v verification.Verification
 	err := r.db.QueryRow(query, token).Scan(
-		&v.ID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -103,7 +103,7 @@ func (r *VerificationRepository) FindByToken(token string) (*verification.Verifi
 // FindByIdentifierAndType retrieves a verification record by identifier and type
 func (r *VerificationRepository) FindByIdentifierAndType(identifier string, verType verification.VerificationType) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE identifier = $1 AND type = $2
 	`
@@ -114,7 +114,7 @@ func (r *VerificationRepository) FindByIdentifierAndType(identifier string, verT
 
 	var v verification.Verification
 	err := r.db.QueryRow(query, identifier, verType).Scan(
-		&v.ID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -130,7 +130,7 @@ func (r *VerificationRepository) FindByIdentifierAndType(identifier string, verT
 // FindByIdentifier retrieves all verification records for an identifier
 func (r *VerificationRepository) FindByIdentifier(identifier string) ([]*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE identifier = $1
 		ORDER BY created_at DESC
@@ -150,7 +150,7 @@ func (r *VerificationRepository) FindByIdentifier(identifier string) ([]*verific
 	for rows.Next() {
 		var v verification.Verification
 		err := rows.Scan(
-			&v.ID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+			&v.ID, &v.UserID, &v.Identifier, &v.Token, &v.Type, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan verification: %w", err)
@@ -166,22 +166,22 @@ func (r *VerificationRepository) FindByIdentifier(identifier string) ([]*verific
 }
 
 // Update updates an existing verification record
-func (r *VerificationRepository) Update(v *verification.Verification) error {
-	if v == nil {
+func (r *VerificationRepository) Update(verification *verification.Verification) error {
+	if verification == nil {
 		return fmt.Errorf("verification cannot be nil")
 	}
 
 	query := `
 		UPDATE verifications
-		SET identifier = $1, token = $2, type = $3, expires_at = $4, updated_at = $5
-		WHERE id = $6
+		SET user_id = $1, identifier = $2, token = $3, type = $4, expires_at = $5, updated_at = $6
+		WHERE id = $7
 	`
 
 	if r.logQueries {
 		slog.Debug("executing query", "query", query)
 	}
 
-	result, err := r.db.Exec(query, v.Identifier, v.Token, v.Type, v.ExpiresAt, v.UpdatedAt, v.ID)
+	result, err := r.db.Exec(query, verification.UserID, verification.Identifier, verification.Token, verification.Type, verification.ExpiresAt, verification.UpdatedAt, verification.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update verification: %w", err)
 	}

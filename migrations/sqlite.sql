@@ -56,14 +56,17 @@ CREATE INDEX IF NOT EXISTS idx_accounts_provider_account ON accounts(provider_id
 -- Verifications table (email verification, password reset tokens, email change tokens)
 CREATE TABLE IF NOT EXISTS verifications (
     id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255),
     identifier VARCHAR(255) NOT NULL,
     token VARCHAR(512) UNIQUE NOT NULL,
     type VARCHAR(50) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_verifications_user_id ON verifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);
 CREATE INDEX IF NOT EXISTS idx_verifications_token ON verifications(token);
 CREATE INDEX IF NOT EXISTS idx_verifications_type ON verifications(type);

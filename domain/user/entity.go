@@ -19,15 +19,15 @@ type User struct {
 
 // CreateUserRequest represents a request to create a new user
 type CreateUserRequest struct {
-	Name  string
-	Email string
-	Image *string
+	Name  string  `json:"name"`
+	Email string  `json:"email"`
+	Image *string `json:"image"`
 }
 
 // UpdateUserRequest represents a request to update an existing user
 type UpdateUserRequest struct {
-	Name  *string
-	Image *string
+	Name  *string `json:"name"`
+	Image *string `json:"image"`
 }
 
 // ValidateEmail validates an email address format

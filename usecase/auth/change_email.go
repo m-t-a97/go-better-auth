@@ -12,22 +12,28 @@ import (
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
-// RequestChangeEmailRequest contains the request data for requesting an email change
-type RequestChangeEmailRequest struct {
-	UserID   string
-	NewEmail string
+// ChangeEmailRequest contains the request data for requesting an email change
+type ChangeEmailRequest struct {
+	UserID      string `json:"user_id" validate:"required"`
+	NewEmail    string `json:"new_email" validate:"required,email"`
+	CallbackURL string `json:"callback_url"`
 }
 
-// RequestChangeEmailResponse contains the response data for requesting an email change
-type RequestChangeEmailResponse struct {
-	Verification *verification.Verification
+// ChangeEmailResponse contains the response data for requesting an email change
+type ChangeEmailResponse struct {
+	Status  bool   `json:"status"`
+	Message string `json:"message"`
 }
 
-// RequestChangeEmail is the use case for requesting an email change
+// ChangeEmail is the use case for requesting an email change
 // It generates a verification token that must be confirmed before the email is changed
-func (s *Service) RequestChangeEmail(ctx context.Context, req *RequestChangeEmailRequest) (*RequestChangeEmailResponse, error) {
+func (s *Service) ChangeEmail(ctx context.Context, req *ChangeEmailRequest) (*ChangeEmailResponse, error) {
+	if !s.config.User.ChangeEmail.Enabled {
+		return nil, fmt.Errorf("change email feature is disabled")
+	}
+
 	if req == nil {
-		return nil, fmt.Errorf("request change email request cannot be nil")
+		return nil, fmt.Errorf("change email request cannot be nil")
 	}
 
 	if req.UserID == "" {
@@ -75,8 +81,9 @@ func (s *Service) RequestChangeEmail(ctx context.Context, req *RequestChangeEmai
 	}
 
 	// Create verification record
-	// Store the new email as the identifier
-	v := &verification.Verification{
+	// Store the user ID and new email for confirmation without requiring auth
+	verification := &verification.Verification{
+		UserID:     req.UserID,
 		Identifier: req.NewEmail,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailChange,
@@ -85,122 +92,43 @@ func (s *Service) RequestChangeEmail(ctx context.Context, req *RequestChangeEmai
 		UpdatedAt:  time.Now(),
 	}
 
-	if err := s.verificationRepo.Create(v); err != nil {
+	if err := s.verificationRepo.Create(verification); err != nil {
 		return nil, fmt.Errorf("failed to create email change verification token: %w", err)
 	}
 
-	// Send verification email if configured
-	if s.config.EmailVerification != nil && s.config.EmailVerification.SendVerificationEmail != nil {
-		go s.sendChangeEmailVerificationAsync(ctx, existingUser, req.NewEmail, verificationToken)
+	if s.config.User != nil &&
+		s.config.User.ChangeEmail != nil &&
+		s.config.User.ChangeEmail.Enabled &&
+		s.config.User.ChangeEmail.SendChangeEmailVerification != nil {
+		go s.sendChangeEmailVerificationAsync(ctx, existingUser, req.NewEmail, verificationToken, req.CallbackURL)
 	}
 
-	return &RequestChangeEmailResponse{
-		Verification: v,
+	return &ChangeEmailResponse{
+		Status:  true,
+		Message: "Verification email sent",
 	}, nil
 }
 
 // sendChangeEmailVerificationAsync sends a verification email for email change asynchronously
-func (s *Service) sendChangeEmailVerificationAsync(ctx context.Context, u *user.User, newEmail string, verificationToken string) {
+func (s *Service) sendChangeEmailVerificationAsync(ctx context.Context, user *user.User, newEmail string, verificationToken string, callbackURL string) {
 	// Build verification URL
 	baseURL := s.config.BaseURL
 	basePath := s.config.BasePath
 	if basePath == "" {
 		basePath = "/api/auth"
 	}
-	verifyURL := baseURL + basePath + "/confirm-change-email?token=" + url.QueryEscape(verificationToken)
 
-	user := &user.User{
-		ID:            u.ID,
-		Name:          u.Name,
-		Email:         u.Email,
-		EmailVerified: u.EmailVerified,
-		Image:         u.Image,
-		CreatedAt:     u.CreatedAt,
-		UpdatedAt:     u.UpdatedAt,
+	callbackURLValue := ""
+	if callbackURL != "" {
+		callbackURLValue = "&callbackURL=" + url.QueryEscape(callbackURL)
 	}
+	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken) + callbackURLValue
 
 	// Send email to new email address
-	if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {
-		slog.ErrorContext(ctx, "failed to send change email verification", "user_id", u.ID, "new_email", newEmail, "error", err)
+	if err := s.config.User.ChangeEmail.SendChangeEmailVerification(ctx, user, newEmail, verifyURL, verificationToken); err != nil {
+		slog.ErrorContext(ctx, "failed to send change email verification", "user_id", user.ID, "new_email", newEmail, "error", err)
 		return
 	}
 
-	slog.InfoContext(ctx, "change email verification sent", "user_id", u.ID, "new_email", newEmail)
-}
-
-// ConfirmChangeEmailRequest contains the request data for confirming an email change
-type ConfirmChangeEmailRequest struct {
-	UserID            string
-	VerificationToken string
-}
-
-// ConfirmChangeEmailResponse contains the response data for confirming an email change
-type ConfirmChangeEmailResponse struct {
-	User *user.User
-}
-
-// ConfirmChangeEmail is the use case for confirming an email change
-// It verifies the token and updates the user's email address
-func (s *Service) ConfirmChangeEmail(req *ConfirmChangeEmailRequest) (*ConfirmChangeEmailResponse, error) {
-	if req == nil {
-		return nil, fmt.Errorf("confirm change email request cannot be nil")
-	}
-
-	if req.UserID == "" {
-		return nil, fmt.Errorf("user ID is required")
-	}
-
-	if req.VerificationToken == "" {
-		return nil, fmt.Errorf("verification token is required")
-	}
-
-	// Find verification token
-	v, err := s.verificationRepo.FindByToken(req.VerificationToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find verification token: %w", err)
-	}
-
-	if v == nil || v.Type != verification.TypeEmailChange {
-		return nil, fmt.Errorf("invalid verification token")
-	}
-
-	// Check if token has expired
-	if v.IsExpired() {
-		return nil, fmt.Errorf("verification token has expired")
-	}
-
-	// Find user by ID
-	u, err := s.userRepo.FindByID(req.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
-	}
-
-	if u == nil {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	// Check if new email is still available (safety check)
-	emailExists, err := s.userRepo.ExistsByEmail(v.Identifier)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check email existence: %w", err)
-	}
-
-	if emailExists && v.Identifier != u.Email {
-		return nil, fmt.Errorf("email is already in use")
-	}
-
-	// Update user's email
-	u.Email = v.Identifier
-	u.UpdatedAt = time.Now()
-
-	if err := s.userRepo.Update(u); err != nil {
-		return nil, fmt.Errorf("failed to update user email: %w", err)
-	}
-
-	// Delete verification token
-	_ = s.verificationRepo.Delete(v.ID)
-
-	return &ConfirmChangeEmailResponse{
-		User: u,
-	}, nil
+	slog.InfoContext(ctx, "change email verification sent", "user_id", user.ID, "new_email", newEmail)
 }

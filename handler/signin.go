@@ -11,8 +11,9 @@ import (
 
 // SignInRequest is the HTTP request for user signin
 type SignInRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	CallbackURL string `json:"callback_url,omitempty"`
 }
 
 // SignInResponse is the HTTP response for user signin
@@ -41,10 +42,11 @@ func SignInHandler(service *auth.Service) http.HandlerFunc {
 
 		// Call use case
 		resp, err := service.SignIn(r.Context(), &auth.SignInRequest{
-			Email:     req.Email,
-			Password:  req.Password,
-			IPAddress: ipAddress,
-			UserAgent: userAgent,
+			Email:       req.Email,
+			Password:    req.Password,
+			CallbackURL: req.CallbackURL,
+			IPAddress:   ipAddress,
+			UserAgent:   userAgent,
 		})
 		if err != nil {
 			// Map error to HTTP status
@@ -65,18 +67,15 @@ func SignInHandler(service *auth.Service) http.HandlerFunc {
 				} else if strings.Contains(errMsg, "password") || strings.Contains(errMsg, "verify") {
 					ErrorResponse(w, http.StatusUnauthorized, "invalid email or password")
 				} else {
-					ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+					ErrorResponse(w, http.StatusInternalServerError, err.Error())
 				}
 			}
 			return
 		}
 
-		// Build response
-		httpResp := SignInResponse{
+		SuccessResponse(w, http.StatusOK, &SignInResponse{
 			Token: resp.Session.Token,
 			User:  resp.User,
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
+		})
 	}
 }

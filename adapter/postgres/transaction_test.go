@@ -233,9 +233,9 @@ func TestPostgresTransaction_VerificationLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	testVerification := &verification.Verification{
-		ID:         uuid.New().String(),
+		ID:         uuid.NewString(),
 		Identifier: "test@example.com",
-		Token:      uuid.New().String(),
+		Token:      uuid.NewString(),
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(1 * time.Hour),
 		CreatedAt:  time.Now(),

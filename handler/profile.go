@@ -48,7 +48,7 @@ func GetMeHandler(s *auth.Service) http.HandlerFunc {
 			case "user not found":
 				ErrorResponse(w, http.StatusNotFound, "user not found")
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
@@ -111,7 +111,7 @@ func UpdateProfileHandler(svc *auth.Service) http.HandlerFunc {
 			case strings.Contains(err.Error(), "invalid request"):
 				ErrorResponse(w, http.StatusBadRequest, err.Error())
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
@@ -180,7 +180,7 @@ func DeleteProfileHandler(svc *auth.Service) http.HandlerFunc {
 			case strings.Contains(err.Error(), "user not found"):
 				ErrorResponse(w, http.StatusNotFound, "user not found")
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
@@ -189,154 +189,6 @@ func DeleteProfileHandler(svc *auth.Service) http.HandlerFunc {
 		httpResp := DeleteProfileResponse{
 			Success: deleteResp.Success,
 			Message: "account successfully deleted",
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
-	}
-}
-
-// RequestChangeEmailRequest is the HTTP request for requesting an email change
-type RequestChangeEmailRequest struct {
-	NewEmail string `json:"new_email"`
-}
-
-// RequestChangeEmailResponse is the HTTP response for requesting an email change
-type RequestChangeEmailResponse struct {
-	Message string `json:"message"`
-}
-
-// RequestChangeEmailHandler handles POST /auth/change-email
-// Requires AuthMiddleware to be applied to extract user ID from context
-// Initiates an email change by sending a verification token to the new email
-func RequestChangeEmailHandler(svc *auth.Service) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
-		// Get user ID from context (set by AuthMiddleware)
-		userID, err := middleware.MustGetUserID(r.Context())
-		if err != nil {
-			ErrorResponse(w, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		// Parse request body
-		var req RequestChangeEmailRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			ErrorResponse(w, http.StatusBadRequest, "invalid request body")
-			return
-		}
-
-		// Call use case
-		resp, err := svc.RequestChangeEmail(r.Context(), &auth.RequestChangeEmailRequest{
-			UserID:   userID,
-			NewEmail: req.NewEmail,
-		})
-		if err != nil {
-			// Map error to HTTP status
-			switch {
-			case strings.Contains(err.Error(), "user ID is required"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "new email is required"):
-				ErrorResponse(w, http.StatusBadRequest, "new_email is required")
-			case strings.Contains(err.Error(), "invalid email"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "user not found"):
-				ErrorResponse(w, http.StatusNotFound, "user not found")
-			case strings.Contains(err.Error(), "new email is the same as current email"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "email is already in use"):
-				ErrorResponse(w, http.StatusConflict, err.Error())
-			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
-			}
-			return
-		}
-
-		// Build response
-		httpResp := RequestChangeEmailResponse{
-			Message: "verification email sent to " + resp.Verification.Identifier,
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
-	}
-}
-
-// ConfirmChangeEmailRequest is the HTTP request for confirming an email change
-type ConfirmChangeEmailRequest struct {
-	VerificationToken string `json:"verification_token"`
-}
-
-// ConfirmChangeEmailResponse is the HTTP response for confirming an email change
-type ConfirmChangeEmailResponse struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	EmailVerified bool   `json:"email_verified"`
-	Image         string `json:"image,omitempty"`
-}
-
-// ConfirmChangeEmailHandler handles POST /auth/change-email/confirm
-// Requires AuthMiddleware to be applied to extract user ID from context
-// Confirms an email change by verifying the token
-func ConfirmChangeEmailHandler(svc *auth.Service) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
-		// Get user ID from context (set by AuthMiddleware)
-		userID, err := middleware.MustGetUserID(r.Context())
-		if err != nil {
-			ErrorResponse(w, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		// Parse request body
-		var req ConfirmChangeEmailRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			ErrorResponse(w, http.StatusBadRequest, "invalid request body")
-			return
-		}
-
-		// Call use case
-		resp, err := svc.ConfirmChangeEmail(&auth.ConfirmChangeEmailRequest{
-			UserID:            userID,
-			VerificationToken: req.VerificationToken,
-		})
-		if err != nil {
-			// Map error to HTTP status
-			switch {
-			case strings.Contains(err.Error(), "user ID is required"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "verification token is required"):
-				ErrorResponse(w, http.StatusBadRequest, "verification_token is required")
-			case strings.Contains(err.Error(), "invalid verification token"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "verification token has expired"):
-				ErrorResponse(w, http.StatusBadRequest, err.Error())
-			case strings.Contains(err.Error(), "user not found"):
-				ErrorResponse(w, http.StatusNotFound, "user not found")
-			case strings.Contains(err.Error(), "email is already in use"):
-				ErrorResponse(w, http.StatusConflict, err.Error())
-			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
-			}
-			return
-		}
-
-		// Build response
-		httpResp := ConfirmChangeEmailResponse{
-			ID:            resp.User.ID,
-			Email:         resp.User.Email,
-			Name:          resp.User.Name,
-			EmailVerified: resp.User.EmailVerified,
-		}
-		if resp.User.Image != nil {
-			httpResp.Image = *resp.User.Image
 		}
 
 		SuccessResponse(w, http.StatusOK, httpResp)

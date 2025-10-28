@@ -18,8 +18,8 @@ type RequestPasswordResetResponse struct {
 	Token   string `json:"token"`
 }
 
-// RequestPasswordResetHandler handles POST /auth/password-reset/request
-func RequestPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
+// SendPasswordResetHandler handles POST /auth/send-password-reset
+func SendPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			ErrorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -48,7 +48,7 @@ func RequestPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 				})
 				return
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}
@@ -103,7 +103,7 @@ func ResetPasswordHandler(svc *auth.Service) http.HandlerFunc {
 			case "reset token has expired":
 				ErrorResponse(w, http.StatusUnauthorized, "reset token has expired")
 			default:
-				ErrorResponse(w, http.StatusInternalServerError, "internal server error")
+				ErrorResponse(w, http.StatusInternalServerError, err.Error())
 			}
 			return
 		}

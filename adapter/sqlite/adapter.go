@@ -203,13 +203,14 @@ CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_provider_account ON accounts(provider_id, account_id);
 
 CREATE TABLE IF NOT EXISTS verifications (
-    id VARCHAR(255) PRIMARY KEY,
-    identifier VARCHAR(255) NOT NULL,
-    token VARCHAR(512) NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+	id VARCHAR(255) PRIMARY KEY,
+	user_id VARCHAR(255),
+	identifier VARCHAR(255) NOT NULL,
+	token VARCHAR(512) UNIQUE NOT NULL,
+	type VARCHAR(50) NOT NULL,
+	expires_at TIMESTAMP NOT NULL,
+	created_at TIMESTAMP NOT NULL,
+	updated_at TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_verifications_identifier ON verifications(identifier);

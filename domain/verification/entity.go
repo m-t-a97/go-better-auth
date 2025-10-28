@@ -16,21 +16,23 @@ const (
 
 // Verification represents a verification token (email verification, password reset, etc.)
 type Verification struct {
-	ID         string
-	Identifier string // Email or user ID
-	Token      string
-	Type       VerificationType
-	ExpiresAt  time.Time
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         string           `json:"id"`
+	UserID     string           `json:"user_id,omitempty"` // User ID (optional, used for email change)
+	Identifier string           `json:"identifier"`        // Email or other identifier
+	Token      string           `json:"token"`
+	Type       VerificationType `json:"type"`
+	ExpiresAt  time.Time        `json:"expires_at"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
 }
 
 // CreateVerificationRequest represents a request to create a verification token
 type CreateVerificationRequest struct {
-	Identifier string
-	Token      string
-	Type       VerificationType
-	ExpiresAt  time.Time
+	UserID     string           `json:"user_id"`
+	Identifier string           `json:"identifier"`
+	Token      string           `json:"token"`
+	Type       VerificationType `json:"type"`
+	ExpiresAt  time.Time        `json:"expires_at"`
 }
 
 // ValidateCreateVerificationRequest validates a create verification request

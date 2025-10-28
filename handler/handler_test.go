@@ -352,13 +352,11 @@ func TestVerifyEmailGetHandler_ValidToken(t *testing.T) {
 	// Create verification token
 	verificationToken := "valid-token-12345"
 	v := &verification.Verification{
-		ID:         "verif-id",
 		Identifier: testUser.Email,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
 	}
 	verificationRepo.Create(v)
 
@@ -383,8 +381,8 @@ func TestVerifyEmailGetHandler_ValidToken(t *testing.T) {
 	handler(w, httpReq)
 
 	// Verify redirect
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("Expected status %d, got %d", http.StatusSeeOther, w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
 	// Verify user email is now verified
@@ -446,13 +444,11 @@ func TestVerifyEmailGetHandler_ExpiredToken(t *testing.T) {
 	// Create expired verification token
 	verificationToken := "expired-token-12345"
 	v := &verification.Verification{
-		ID:         "verif-id",
 		Identifier: testUser.Email,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
 		CreatedAt:  time.Now().Add(-2 * time.Hour),
-		UpdatedAt:  time.Now().Add(-2 * time.Hour),
 	}
 	verificationRepo.Create(v)
 
@@ -483,7 +479,8 @@ func TestVerifyEmailGetHandler_InvalidMethod(t *testing.T) {
 	service := setupTestService()
 	handler := VerifyEmailHandler(service)
 
-	httpReq := httptest.NewRequest(http.MethodPost, "/auth/verify-email", nil)
+	// Test with invalid method (PUT)
+	httpReq := httptest.NewRequest(http.MethodPut, "/auth/verify-email", nil)
 	w := httptest.NewRecorder()
 
 	handler(w, httpReq)
@@ -510,13 +507,11 @@ func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
 	// Create verification token
 	verificationToken := "valid-token-12345"
 	v := &verification.Verification{
-		ID:         "verif-id",
 		Identifier: testUser.Email,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
 	}
 	verificationRepo.Create(v)
 
@@ -525,7 +520,6 @@ func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
 	config.BaseURL = "https://example.com"
 	config.EmailVerification = &domain.EmailVerificationConfig{
 		ExpiresIn:             24 * time.Hour,
-		SuccessRedirectURL:    "https://example.com/login?verified=true",
 		SendVerificationEmail: nil,
 	}
 
@@ -539,7 +533,7 @@ func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
 
 	handler := VerifyEmailHandler(service)
 
-	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token="+verificationToken, nil)
+	httpReq := httptest.NewRequest(http.MethodGet, "/auth/verify-email?token="+verificationToken+"&callbackURL=https://example.com/login?verified=true", nil)
 	w := httptest.NewRecorder()
 
 	handler(w, httpReq)

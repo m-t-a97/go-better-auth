@@ -849,21 +849,21 @@ type txVerificationRepository struct {
 }
 
 // Create creates a new verification token within a transaction
-func (r *txVerificationRepository) Create(v *verification.Verification) error {
-	if v == nil {
+func (r *txVerificationRepository) Create(verification *verification.Verification) error {
+	if verification == nil {
 		return fmt.Errorf("verification cannot be nil")
 	}
 
 	query := `
-		INSERT INTO verifications (id, identifier, token, type, expires_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO verifications (id, user_id, identifier, token, type, expires_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	if r.logQueries {
 		slog.Debug("executing query", "query", query)
 	}
 
-	_, err := r.tx.Exec(query, v.ID, v.Identifier, v.Token, string(v.Type), v.ExpiresAt, v.CreatedAt, v.UpdatedAt)
+	_, err := r.tx.Exec(query, verification.ID, verification.UserID, verification.Identifier, verification.Token, string(verification.Type), verification.ExpiresAt, verification.CreatedAt, verification.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create verification: %w", err)
 	}
@@ -874,7 +874,7 @@ func (r *txVerificationRepository) Create(v *verification.Verification) error {
 // FindByToken retrieves a verification by token within a transaction
 func (r *txVerificationRepository) FindByToken(token string) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE token = ?
 	`
@@ -886,7 +886,7 @@ func (r *txVerificationRepository) FindByToken(token string) (*verification.Veri
 	var v verification.Verification
 	var verType string
 	err := r.tx.QueryRow(query, token).Scan(
-		&v.ID, &v.Identifier, &v.Token, &verType, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &verType, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -903,7 +903,7 @@ func (r *txVerificationRepository) FindByToken(token string) (*verification.Veri
 // FindByIdentifierAndType retrieves a verification by identifier and type within a transaction
 func (r *txVerificationRepository) FindByIdentifierAndType(identifier string, verType verification.VerificationType) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE identifier = ? AND type = ?
 	`
@@ -915,7 +915,7 @@ func (r *txVerificationRepository) FindByIdentifierAndType(identifier string, ve
 	var v verification.Verification
 	var typeStr string
 	err := r.tx.QueryRow(query, identifier, string(verType)).Scan(
-		&v.ID, &v.Identifier, &v.Token, &typeStr, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &typeStr, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {

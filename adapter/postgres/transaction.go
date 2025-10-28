@@ -820,15 +820,15 @@ func (r *txVerificationRepository) Create(v *verification.Verification) error {
 	}
 
 	query := `
-		INSERT INTO verifications (id, identifier, token, type, expires_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO verifications (id, user_id, identifier, token, type, expires_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	if r.logQueries {
 		slog.Debug("executing query", "query", query)
 	}
 
-	_, err := r.tx.Exec(query, v.ID, v.Identifier, v.Token, string(v.Type), v.ExpiresAt, v.CreatedAt, v.UpdatedAt)
+	_, err := r.tx.Exec(query, v.ID, v.UserID, v.Identifier, v.Token, string(v.Type), v.ExpiresAt, v.CreatedAt, v.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create verification: %w", err)
 	}
@@ -838,7 +838,7 @@ func (r *txVerificationRepository) Create(v *verification.Verification) error {
 
 func (r *txVerificationRepository) FindByToken(token string) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE token = $1
 	`
@@ -850,7 +850,7 @@ func (r *txVerificationRepository) FindByToken(token string) (*verification.Veri
 	var v verification.Verification
 	var verType string
 	err := r.tx.QueryRow(query, token).Scan(
-		&v.ID, &v.Identifier, &v.Token, &verType, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &verType, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -866,7 +866,7 @@ func (r *txVerificationRepository) FindByToken(token string) (*verification.Veri
 
 func (r *txVerificationRepository) FindByIdentifierAndType(identifier string, verType verification.VerificationType) (*verification.Verification, error) {
 	query := `
-		SELECT id, identifier, token, type, expires_at, created_at, updated_at
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
 		FROM verifications
 		WHERE identifier = $1 AND type = $2
 	`
@@ -878,7 +878,7 @@ func (r *txVerificationRepository) FindByIdentifierAndType(identifier string, ve
 	var v verification.Verification
 	var typeStr string
 	err := r.tx.QueryRow(query, identifier, string(verType)).Scan(
-		&v.ID, &v.Identifier, &v.Token, &typeStr, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.UserID, &v.Identifier, &v.Token, &typeStr, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {

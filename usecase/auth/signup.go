@@ -19,9 +19,10 @@ import (
 
 // SignUpRequest contains the request data for sign up
 type SignUpRequest struct {
-	Email    string
-	Password string
-	Name     string
+	Email       string
+	Password    string
+	Name        string
+	CallbackURL string
 }
 
 // SignUpResponse contains the response data for sign up
@@ -75,7 +76,7 @@ func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpRespon
 		Email: strings.TrimSpace(req.Email),
 		Name:  strings.TrimSpace(req.Name),
 		// If email verification is not enabled, mark as verified automatically
-		EmailVerified: s.config.EmailVerification == nil,
+		EmailVerified: s.config.EmailVerification == nil || !s.config.EmailVerification.Enabled,
 		Image:         nil,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -125,13 +126,14 @@ func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpRespon
 
 	// Send verification email if configured
 	if s.config.EmailVerification != nil && s.config.EmailVerification.SendOnSignUp && s.config.EmailVerification.SendVerificationEmail != nil {
-		go s.sendVerificationEmail(ctx, userToCreate)
+		go s.sendVerificationEmailAsync(ctx, userToCreate, req.CallbackURL)
 	}
 
 	return &SignUpResponse{Session: sessionCreated, User: userToCreate}, nil
 }
 
-func (s *Service) sendVerificationEmail(ctx context.Context, user *user.User) {
+// sendVerificationEmailAsync sends the verification email asynchronously
+func (s *Service) sendVerificationEmailAsync(ctx context.Context, user *user.User, callbackURL string) {
 	// Generate verification token
 	verificationToken, err := crypto.GenerateToken(32)
 	if err != nil {
@@ -141,7 +143,6 @@ func (s *Service) sendVerificationEmail(ctx context.Context, user *user.User) {
 
 	// Create verification record
 	newVerification := &verification.Verification{
-		ID:         uuid.New().String(),
 		Identifier: user.Email,
 		Token:      verificationToken,
 		Type:       verification.TypeEmailVerification,
@@ -161,7 +162,11 @@ func (s *Service) sendVerificationEmail(ctx context.Context, user *user.User) {
 	if basePath == "" {
 		basePath = "/auth"
 	}
-	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken)
+	callbackURLValue := ""
+	if callbackURL != "" {
+		callbackURLValue = "&callbackURL=" + url.QueryEscape(callbackURL)
+	}
+	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken) + callbackURLValue
 
 	// Send email
 	if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {

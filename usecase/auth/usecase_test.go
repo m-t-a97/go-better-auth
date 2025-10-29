@@ -206,7 +206,7 @@ func TestRequestPasswordReset_Valid(t *testing.T) {
 		Email: testUser.Email,
 	}
 
-	resp, err := service.RequestPasswordReset(req)
+	resp, err := service.RequestPasswordReset(context.Background(), req)
 	if err != nil {
 		t.Fatalf("RequestPasswordReset failed: %v", err)
 	}
@@ -246,9 +246,10 @@ func TestResetPassword_Valid(t *testing.T) {
 
 	// Create a password reset token
 	resetToken := "reset-token-12345"
+	hashedResetToken := crypto.HashVerificationToken(resetToken)
 	v := &verification.Verification{
 		Identifier: testUser.Email,
-		Token:      resetToken,
+		Token:      hashedResetToken,
 		Type:       verification.TypePasswordReset,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
@@ -269,7 +270,7 @@ func TestResetPassword_Valid(t *testing.T) {
 		t.Fatalf("ResetPassword failed: %v", err)
 	}
 
-	if !resp.Success {
+	if resp.Message != "Password has been reset successfully" {
 		t.Error("Expected reset password to succeed")
 	}
 
@@ -292,7 +293,7 @@ func TestResetPassword_Valid(t *testing.T) {
 	}
 
 	// Verify token is deleted
-	_, err = verificationRepo.FindByToken(resetToken)
+	_, err = verificationRepo.FindByHashedToken(resetToken)
 	if err == nil {
 		t.Error("Expected reset token to be deleted")
 	}
@@ -358,9 +359,10 @@ func TestVerifyEmail_Valid(t *testing.T) {
 
 	// Create an email verification token
 	verificationToken := "verify-token-12345"
+	hashedVerificationToken := crypto.HashVerificationToken(verificationToken)
 	v := &verification.Verification{
 		Identifier: testUser.Email,
-		Token:      verificationToken,
+		Token:      hashedVerificationToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
@@ -399,7 +401,7 @@ func TestVerifyEmail_Valid(t *testing.T) {
 	}
 
 	// Verify token is deleted
-	_, err = verificationRepo.FindByToken(verificationToken)
+	_, err = verificationRepo.FindByHashedToken(verificationToken)
 	if err == nil {
 		t.Error("Expected verification token to be deleted")
 	}

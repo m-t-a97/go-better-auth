@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
@@ -353,7 +355,7 @@ func TestVerifyEmailGetHandler_ValidToken(t *testing.T) {
 	verificationToken := "valid-token-12345"
 	v := &verification.Verification{
 		Identifier: testUser.Email,
-		Token:      verificationToken,
+		Token:      crypto.HashVerificationToken(verificationToken),
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
@@ -392,7 +394,7 @@ func TestVerifyEmailGetHandler_ValidToken(t *testing.T) {
 	}
 
 	// Verify token is deleted
-	_, err := verificationRepo.FindByToken(verificationToken)
+	_, err := verificationRepo.FindByHashedToken(verificationToken)
 	if err == nil {
 		t.Error("Expected verification token to be deleted")
 	}
@@ -445,7 +447,7 @@ func TestVerifyEmailGetHandler_ExpiredToken(t *testing.T) {
 	verificationToken := "expired-token-12345"
 	v := &verification.Verification{
 		Identifier: testUser.Email,
-		Token:      verificationToken,
+		Token:      crypto.HashVerificationToken(verificationToken),
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
 		CreatedAt:  time.Now().Add(-2 * time.Hour),
@@ -508,7 +510,7 @@ func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
 	verificationToken := "valid-token-12345"
 	v := &verification.Verification{
 		Identifier: testUser.Email,
-		Token:      verificationToken,
+		Token:      crypto.HashVerificationToken(verificationToken),
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(24 * time.Hour),
 		CreatedAt:  time.Now(),
@@ -543,7 +545,23 @@ func TestVerifyEmailGetHandler_CustomRedirectURL(t *testing.T) {
 	}
 
 	location := w.Header().Get("Location")
-	if location != "https://example.com/login?verified=true" {
-		t.Errorf("Expected redirect to custom URL, got %s", location)
+	parsedLocation, err := url.Parse(location)
+	if err != nil {
+		t.Fatalf("Expected redirect URL to be valid but got error: %v", err)
+	}
+
+	if parsedLocation.Scheme != "https" || parsedLocation.Host != "example.com" || parsedLocation.Path != "/login" {
+		t.Fatalf("Unexpected redirect target: %s", location)
+	}
+
+	query := parsedLocation.Query()
+	if query.Get("verified") != "true" {
+		t.Fatalf("Expected verified query param to be preserved, got %s", query.Get("verified"))
+	}
+	if query.Get("token") != verificationToken {
+		t.Fatalf("Expected token query param to be appended, got %s", query.Get("token"))
+	}
+	if query.Get("type") != string(verification.TypeEmailVerification) {
+		t.Fatalf("Expected type query param to be appended, got %s", query.Get("type"))
 	}
 }

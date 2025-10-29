@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // VerificationRepository implements an in-memory verification repository
@@ -52,6 +53,20 @@ func (r *VerificationRepository) FindByToken(token string) (*verification.Verifi
 
 	for _, v := range r.verifications {
 		if v.Token == token {
+			return v, nil
+		}
+	}
+
+	return nil, fmt.Errorf("verification not found")
+}
+
+// FindByHashedToken retrieves a verification by matching a plain token against a hashed token
+func (r *VerificationRepository) FindByHashedToken(plainToken string) (*verification.Verification, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, v := range r.verifications {
+		if crypto.VerifyVerificationToken(plainToken, v.Token) {
 			return v, nil
 		}
 	}

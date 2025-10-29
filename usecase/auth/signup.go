@@ -104,7 +104,7 @@ func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpRespon
 	}
 
 	// Generate session token
-	sessionToken, err := crypto.GenerateToken(32)
+	sessionToken, err := crypto.GenerateSessionToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session token: %w", err)
 	}
@@ -135,16 +135,19 @@ func (s *Service) SignUp(ctx context.Context, req *SignUpRequest) (*SignUpRespon
 // sendVerificationEmailAsync sends the verification email asynchronously
 func (s *Service) sendVerificationEmailAsync(ctx context.Context, user *user.User, callbackURL string) {
 	// Generate verification token
-	verificationToken, err := crypto.GenerateToken(32)
+	verificationToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to generate verification token", "user_id", user.ID, "error", err)
 		return
 	}
 
-	// Create verification record
+	// Hash the token for secure storage
+	hashedToken := crypto.HashVerificationToken(verificationToken)
+
+	// Create verification record with hashed token
 	newVerification := &verification.Verification{
 		Identifier: user.Email,
-		Token:      verificationToken,
+		Token:      hashedToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(s.config.EmailVerification.ExpiresIn),
 		CreatedAt:  time.Now(),
@@ -156,7 +159,7 @@ func (s *Service) sendVerificationEmailAsync(ctx context.Context, user *user.Use
 		return
 	}
 
-	// Build verification URL
+	// Build verification URL using the plain token (not the hashed one)
 	baseURL := s.config.BaseURL
 	basePath := s.config.BasePath
 	if basePath == "" {
@@ -168,7 +171,7 @@ func (s *Service) sendVerificationEmailAsync(ctx context.Context, user *user.Use
 	}
 	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken) + callbackURLValue
 
-	// Send email
+	// Send email with the plain token
 	if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {
 		slog.ErrorContext(ctx, "failed to send verification email", "user_id", user.ID, "email", user.Email, "error", err)
 		return

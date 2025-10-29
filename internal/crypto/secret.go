@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 )
@@ -89,4 +90,23 @@ func GenerateVerificationToken() (string, error) {
 // GenerateCSRFToken generates a CSRF token (32 bytes)
 func GenerateCSRFToken() (string, error) {
 	return GenerateToken(32)
+}
+
+// HashVerificationToken hashes a verification token using SHA256
+// This is used to securely store the token in the database
+func HashVerificationToken(token string) string {
+	if token == "" {
+		return ""
+	}
+	hash := sha256.Sum256([]byte(token))
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+// VerifyVerificationToken verifies a plain token against its hash
+// Returns true if the token matches the hash, false otherwise
+func VerifyVerificationToken(plainToken, hashedToken string) bool {
+	if plainToken == "" || hashedToken == "" {
+		return false
+	}
+	return HashVerificationToken(plainToken) == hashedToken
 }

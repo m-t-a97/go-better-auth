@@ -75,17 +75,20 @@ func (s *Service) ChangeEmail(ctx context.Context, req *ChangeEmailRequest) (*Ch
 	}
 
 	// Generate verification token
-	verificationToken, err := crypto.GenerateToken(32)
+	verificationToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate verification token: %w", err)
 	}
 
-	// Create verification record
+	// Hash the token for secure storage
+	hashedToken := crypto.HashVerificationToken(verificationToken)
+
+	// Create verification record with hashed token
 	// Store the user ID and new email for confirmation without requiring auth
 	verification := &verification.Verification{
 		UserID:     req.UserID,
 		Identifier: req.NewEmail,
-		Token:      verificationToken,
+		Token:      hashedToken,
 		Type:       verification.TypeEmailChange,
 		ExpiresAt:  time.Now().Add(24 * time.Hour), // 1 day
 		CreatedAt:  time.Now(),

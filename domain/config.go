@@ -276,8 +276,8 @@ type EmailPasswordConfig struct {
 	// SendResetPassword is a function to send reset password emails
 	SendResetPassword func(ctx context.Context, user *user.User, url string, token string) error
 
-	// ResetPasswordTokenExpiresIn is the number of seconds the reset token is valid for (default: 3600)
-	ResetPasswordTokenExpiresIn int
+	// ResetPasswordTokenExpiresIn is the duration the reset token is valid for (default: 1 hour)
+	ResetPasswordTokenExpiresIn time.Duration
 
 	// Password holds custom password hashing and verification functions
 	Password *PasswordConfig

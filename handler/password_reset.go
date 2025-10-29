@@ -9,13 +9,13 @@ import (
 
 // RequestPasswordResetRequest is the HTTP request for requesting a password reset
 type RequestPasswordResetRequest struct {
-	Email string `json:"email"`
+	Email       string `json:"email"`
+	CallbackURL string `json:"callback_url,omitempty"`
 }
 
 // RequestPasswordResetResponse is the HTTP response for requesting a password reset
 type RequestPasswordResetResponse struct {
 	Message string `json:"message"`
-	Token   string `json:"token"`
 }
 
 // SendPasswordResetHandler handles POST /auth/send-password-reset
@@ -33,8 +33,9 @@ func SendPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Call use case
-		resp, err := svc.RequestPasswordReset(&auth.RequestPasswordResetRequest{
-			Email: req.Email,
+		_, err := svc.RequestPasswordReset(r.Context(), &auth.RequestPasswordResetRequest{
+			Email:       req.Email,
+			CallbackURL: req.CallbackURL,
 		})
 		if err != nil {
 			// Map error to HTTP status
@@ -43,8 +44,8 @@ func SendPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 				ErrorResponse(w, http.StatusBadRequest, err.Error())
 			case "user not found":
 				// Don't reveal if user exists for security
-				SuccessResponse(w, http.StatusOK, map[string]string{
-					"message": "if email exists, a password reset link has been sent",
+				SuccessResponse(w, http.StatusOK, RequestPasswordResetResponse{
+					Message: "if email exists, a password reset link has been sent",
 				})
 				return
 			default:
@@ -54,12 +55,9 @@ func SendPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		// Build response
-		httpResp := RequestPasswordResetResponse{
-			Message: "password reset link sent to email",
-			Token:   resp.Verification.Token,
-		}
-
-		SuccessResponse(w, http.StatusOK, httpResp)
+		SuccessResponse(w, http.StatusOK, RequestPasswordResetResponse{
+			Message: "if email exists, a password reset link has been sent",
+		})
 	}
 }
 
@@ -74,7 +72,7 @@ type ResetPasswordResponse struct {
 	Message string `json:"message"`
 }
 
-// ResetPasswordHandler handles POST /auth/password-reset/confirm
+// ResetPasswordHandler handles POST /auth/reset-password
 func ResetPasswordHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

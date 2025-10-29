@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain/user"
@@ -38,15 +37,18 @@ func (s *Service) SendEmailVerification(ctx context.Context, req *SendEmailVerif
 	}
 
 	// Generate verification token
-	verificationToken, err := crypto.GenerateToken(32)
+	verificationToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate verification token: %w", err)
 	}
 
-	// Create verification record
+	// Hash the token for secure storage
+	hashedToken := crypto.HashVerificationToken(verificationToken)
+
+	// Create verification record with hashed token
 	verification := &verification.Verification{
 		Identifier: req.Email,
-		Token:      verificationToken,
+		Token:      hashedToken,
 		Type:       verification.TypeEmailVerification,
 		ExpiresAt:  time.Now().Add(7 * 24 * time.Hour), // 7 days
 		CreatedAt:  time.Now(),
@@ -73,17 +75,7 @@ func (s *Service) SendEmailVerification(ctx context.Context, req *SendEmailVerif
 
 // sendVerificationEmailForRequestAsync sends a verification email asynchronously for manual verification requests
 func (s *Service) sendVerificationEmailForRequestAsync(ctx context.Context, user *user.User, verificationToken string, callbackURL string) {
-	// Build verification URL
-	baseURL := s.config.BaseURL
-	basePath := s.config.BasePath
-	if basePath == "" {
-		basePath = "/api/auth"
-	}
-	callbackURLValue := ""
-	if callbackURL != "" {
-		callbackURLValue = "&callbackURL=" + url.QueryEscape(callbackURL)
-	}
-	verifyURL := baseURL + basePath + "/verify-email?token=" + url.QueryEscape(verificationToken) + callbackURLValue
+	verifyURL := s.buildVerificationURL(verificationToken, callbackURL)
 
 	// Send email
 	if err := s.config.EmailVerification.SendVerificationEmail(ctx, user, verifyURL, verificationToken); err != nil {

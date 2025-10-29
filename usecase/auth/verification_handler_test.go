@@ -7,6 +7,7 @@ import (
 
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 )
 
@@ -188,7 +189,12 @@ func TestVerifyEmailUnified(t *testing.T) {
 
 			// Setup verification if provided
 			if tt.setupVerif != nil {
-				verificationRepo.Create(tt.setupVerif)
+				// Keep the original plain token for the request and assertions
+				plainToken := tt.setupVerif.Token
+				// Create a copy for storing with hashed token
+				verificationToStore := *tt.setupVerif
+				verificationToStore.Token = crypto.HashVerificationToken(plainToken)
+				verificationRepo.Create(&verificationToStore)
 			}
 
 			// Setup additional users
@@ -225,6 +231,10 @@ func TestVerifyEmailUnified(t *testing.T) {
 					t.Fatal("expected status to be true")
 				}
 
+				if tt.setupVerif != nil && resp.Type != tt.setupVerif.Type {
+					t.Fatalf("expected response type %q but got %q", tt.setupVerif.Type, resp.Type)
+				}
+
 				// For email verification, check that user's email is now verified
 				if tt.setupVerif != nil && tt.setupVerif.Type == verification.TypeEmailVerification && tt.setupUser != nil {
 					updatedUser, _ := userRepo.FindByEmail(tt.setupUser.Email)
@@ -249,11 +259,26 @@ func TestVerifyEmailUnified(t *testing.T) {
 					}
 				}
 
-				// For email change and password reset, check that token is deleted
-				if tt.setupVerif != nil && (tt.setupVerif.Type == verification.TypeEmailChange || tt.setupVerif.Type == verification.TypePasswordReset) {
-					tokenAfter, _ := verificationRepo.FindByToken(tt.setupVerif.Token)
+				if tt.setupVerif != nil && tt.setupVerif.Type == verification.TypeEmailChange {
+					tokenAfter, _ := verificationRepo.FindByHashedToken(tt.setupVerif.Token)
 					if tokenAfter != nil {
 						t.Fatal("verification token should be deleted after verification")
+					}
+				}
+
+				if tt.setupVerif != nil && tt.setupVerif.Type == verification.TypePasswordReset {
+					if resp.ResetToken == "" {
+						t.Fatal("expected reset token in response")
+					}
+					// The reset token in the response is the hashed version from the DB
+					expectedHashedToken := crypto.HashVerificationToken(tt.setupVerif.Token)
+					if resp.ResetToken != expectedHashedToken {
+						t.Fatalf("expected reset token to match hashed version")
+					}
+
+					tokenAfter, _ := verificationRepo.FindByHashedToken(tt.setupVerif.Token)
+					if tokenAfter == nil {
+						t.Fatal("verification token should remain for password reset")
 					}
 				}
 			}

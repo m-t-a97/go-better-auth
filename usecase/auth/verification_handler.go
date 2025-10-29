@@ -16,7 +16,9 @@ type VerifyEmailRequest struct {
 
 // VerifyEmailResponse contains the response data for verifying an email
 type VerifyEmailResponse struct {
-	Status bool `json:"status"`
+	Status     bool                          `json:"status"`
+	Type       verification.VerificationType `json:"type"`
+	ResetToken string                        `json:"reset_token,omitempty"`
 }
 
 // VerifyEmail is the unified use case for handling all verification types
@@ -30,8 +32,8 @@ func (s *Service) VerifyEmail(ctx context.Context, req *VerifyEmailRequest) (*Ve
 		return nil, fmt.Errorf("verification token is required")
 	}
 
-	// Find verification token
-	verif, err := s.verificationRepo.FindByToken(req.VerificationToken)
+	// Find verification token by matching the plain token against hashed tokens
+	verif, err := s.verificationRepo.FindByHashedToken(req.VerificationToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find verification token: %w", err)
 	}
@@ -44,6 +46,8 @@ func (s *Service) VerifyEmail(ctx context.Context, req *VerifyEmailRequest) (*Ve
 	if verif.IsExpired() {
 		return nil, fmt.Errorf("verification token has expired")
 	}
+
+	var resetToken string
 
 	// Route to appropriate handler based on verification type
 	switch verif.Type {
@@ -59,12 +63,15 @@ func (s *Service) VerifyEmail(ctx context.Context, req *VerifyEmailRequest) (*Ve
 		if err := s.handlePasswordReset(verif); err != nil {
 			return nil, err
 		}
+		resetToken = verif.Token
 	default:
 		return nil, fmt.Errorf("unknown verification type: %s", verif.Type)
 	}
 
 	return &VerifyEmailResponse{
-		Status: true,
+		Status:     true,
+		Type:       verif.Type,
+		ResetToken: resetToken,
 	}, nil
 }
 
@@ -149,9 +156,6 @@ func (s *Service) handlePasswordReset(verif *verification.Verification) error {
 	if userFound == nil {
 		return fmt.Errorf("user not found")
 	}
-
-	// Delete verification token
-	_ = s.verificationRepo.Delete(verif.ID)
 
 	return nil
 }

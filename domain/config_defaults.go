@@ -18,7 +18,7 @@ const (
 	DefaultMinPasswordLength     = 8
 	DefaultMaxPasswordLength     = 128
 	DefaultVerificationExpiresIn = 1 * time.Hour
-	DefaultResetPasswordExpiry   = 3600 // 1 hour
+	DefaultResetPasswordExpiry   = 1 * time.Hour
 	DefaultRateLimitWindow       = 10
 	DefaultRateLimitMax          = 100
 	DefaultCookieCacheMaxAge     = 300 // 5 minutes

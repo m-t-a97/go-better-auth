@@ -142,7 +142,7 @@ func TestValidateEmailPasswordConfig_Valid(t *testing.T) {
 		Enabled:                     true,
 		MinPasswordLength:           8,
 		MaxPasswordLength:           128,
-		ResetPasswordTokenExpiresIn: 3600,
+		ResetPasswordTokenExpiresIn: 1 * time.Hour,
 	}
 
 	err := validateEmailPasswordConfig(config)

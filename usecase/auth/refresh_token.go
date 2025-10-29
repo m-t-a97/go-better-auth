@@ -46,7 +46,7 @@ func (s *Service) RefreshToken(req *RefreshTokenRequest) (*RefreshTokenResponse,
 	}
 
 	// Generate new token
-	newToken, err := crypto.GenerateToken(32)
+	newToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate new token: %w", err)
 	}

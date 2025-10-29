@@ -99,6 +99,10 @@ type Repository interface {
 	// FindByToken retrieves a verification by token
 	FindByToken(token string) (*Verification, error)
 
+	// FindByHashedToken retrieves a verification by matching a plain token against a hashed token
+	// It takes a plain token and finds the verification where the hashed token matches
+	FindByHashedToken(plainToken string) (*Verification, error)
+
 	// FindByIdentifierAndType retrieves a verification by identifier and type
 	FindByIdentifierAndType(identifier string, verType VerificationType) (*Verification, error)
 

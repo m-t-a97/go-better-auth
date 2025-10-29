@@ -9,6 +9,7 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain/session"
 	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // SQLiteTransaction implements adapter.Transaction for SQLite
@@ -898,6 +899,47 @@ func (r *txVerificationRepository) FindByToken(token string) (*verification.Veri
 
 	v.Type = verification.VerificationType(verType)
 	return &v, nil
+}
+
+// FindByHashedToken retrieves a verification by matching a plain token against a hashed token within a transaction
+func (r *txVerificationRepository) FindByHashedToken(plainToken string) (*verification.Verification, error) {
+	query := `
+		SELECT id, user_id, identifier, token, type, expires_at, created_at, updated_at
+		FROM verifications
+		ORDER BY created_at DESC
+	`
+
+	if r.logQueries {
+		slog.Debug("executing query", "query", query)
+	}
+
+	rows, err := r.tx.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query verifications: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var v verification.Verification
+		var verType string
+		err := rows.Scan(
+			&v.ID, &v.UserID, &v.Identifier, &v.Token, &verType, &v.ExpiresAt, &v.CreatedAt, &v.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+
+		if crypto.VerifyVerificationToken(plainToken, v.Token) {
+			v.Type = verification.VerificationType(verType)
+			return &v, nil
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate verifications: %w", err)
+	}
+
+	return nil, fmt.Errorf("verification token not found")
 }
 
 // FindByIdentifierAndType retrieves a verification by identifier and type within a transaction

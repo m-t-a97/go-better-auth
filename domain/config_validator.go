@@ -217,8 +217,8 @@ func validateEmailPasswordConfig(config *EmailPasswordConfig) error {
 		return fmt.Errorf("MaxPasswordLength is too large (max 512)")
 	}
 
-	if config.ResetPasswordTokenExpiresIn < 60 {
-		return fmt.Errorf("ResetPasswordTokenExpiresIn should be at least 60 seconds")
+	if config.ResetPasswordTokenExpiresIn < 1*time.Minute {
+		return fmt.Errorf("ResetPasswordTokenExpiresIn should be at least 1 minute")
 	}
 
 	return nil

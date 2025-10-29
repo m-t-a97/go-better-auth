@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 )
@@ -56,7 +57,9 @@ func SendEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 
 // VerifyEmailResponse is the HTTP response for verifying email
 type VerifyEmailResponse struct {
-	Status bool `json:"status"`
+	Status     bool   `json:"status"`
+	Type       string `json:"type"`
+	ResetToken string `json:"reset_token,omitempty"`
 }
 
 // VerifyEmailHandler handles GET /auth/verify-email?token={token}&callbackURL={callbackURL} OR POST /auth/verify-email
@@ -124,13 +127,31 @@ func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 		if r.Method == http.MethodGet {
 			callbackURL := r.URL.Query().Get("callbackURL")
 			if callbackURL != "" {
-				http.Redirect(w, r, callbackURL, http.StatusSeeOther)
+				redirectURL, err := url.Parse(callbackURL)
+				if err != nil {
+					ErrorResponse(w, http.StatusBadRequest, "invalid callback url")
+					return
+				}
+
+				query := redirectURL.Query()
+				query.Set("token", token)
+				if resp != nil && resp.Type != "" {
+					query.Set("type", string(resp.Type))
+				}
+				if resp != nil && resp.ResetToken != "" {
+					query.Set("reset_token", resp.ResetToken)
+				}
+				redirectURL.RawQuery = query.Encode()
+
+				http.Redirect(w, r, redirectURL.String(), http.StatusSeeOther)
 				return
 			}
 		}
 
 		SuccessResponse(w, http.StatusOK, &VerifyEmailResponse{
-			Status: resp.Status,
+			Status:     resp.Status,
+			Type:       string(resp.Type),
+			ResetToken: resp.ResetToken,
 		})
 	}
 }

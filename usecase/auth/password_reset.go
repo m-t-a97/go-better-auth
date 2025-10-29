@@ -1,18 +1,22 @@
 package auth
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/m-t-a97/go-better-auth/domain/account"
+	"github.com/m-t-a97/go-better-auth/domain/user"
 	"github.com/m-t-a97/go-better-auth/domain/verification"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // RequestPasswordResetRequest contains the request data for requesting a password reset
 type RequestPasswordResetRequest struct {
-	Email string
+	Email       string
+	CallbackURL string
 }
 
 // RequestPasswordResetResponse contains the response data for requesting a password reset
@@ -21,7 +25,7 @@ type RequestPasswordResetResponse struct {
 }
 
 // RequestPasswordReset is the use case for requesting a password reset
-func (s *Service) RequestPasswordReset(req *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error) {
+func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request password reset request cannot be nil")
 	}
@@ -31,33 +35,46 @@ func (s *Service) RequestPasswordReset(req *RequestPasswordResetRequest) (*Reque
 	}
 
 	// Find user by email
-	u, err := s.userRepo.FindByEmail(req.Email)
+	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if u == nil {
+	if user == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
 	// Generate reset token
-	resetToken, err := crypto.GenerateToken(32)
+	resetToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate reset token: %w", err)
 	}
 
-	// Create verification record
+	// Hash the token for secure storage
+	hashedToken := crypto.HashVerificationToken(resetToken)
+
+	expiresIn := 24 * time.Hour
+	if s.config.EmailAndPassword != nil && s.config.EmailAndPassword.Enabled && s.config.EmailAndPassword.ResetPasswordTokenExpiresIn > 0 {
+		expiresIn = s.config.EmailAndPassword.ResetPasswordTokenExpiresIn
+	}
+
+	now := time.Now()
 	v := &verification.Verification{
-		Identifier: u.Email,
-		Token:      resetToken,
+		UserID:     user.ID,
+		Identifier: user.Email,
+		Token:      hashedToken,
 		Type:       verification.TypePasswordReset,
-		ExpiresAt:  time.Now().Add(24 * time.Hour),
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ExpiresAt:  now.Add(expiresIn),
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
 	if err := s.verificationRepo.Create(v); err != nil {
 		return nil, fmt.Errorf("failed to create password reset token: %w", err)
+	}
+
+	if s.config != nil && s.config.EmailAndPassword != nil && s.config.EmailAndPassword.SendResetPassword != nil {
+		go s.sendResetPasswordEmail(ctx, user, resetToken, req.CallbackURL)
 	}
 
 	return &RequestPasswordResetResponse{
@@ -73,7 +90,7 @@ type ResetPasswordRequest struct {
 
 // ResetPasswordResponse contains the response data for resetting a password
 type ResetPasswordResponse struct {
-	Success bool
+	Message string `json:"message"`
 }
 
 // ResetPassword is the use case for resetting a user's password
@@ -86,8 +103,7 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	// Find verification token
-	v, err := s.verificationRepo.FindByToken(req.ResetToken)
+	v, err := s.verificationRepo.FindByHashedToken(req.ResetToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reset token: %w", err)
 	}
@@ -96,12 +112,10 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("invalid reset token")
 	}
 
-	// Check if token has expired
 	if v.IsExpired() {
 		return nil, fmt.Errorf("reset token has expired")
 	}
 
-	// Find user by email
 	u, err := s.userRepo.FindByEmail(v.Identifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
@@ -111,7 +125,6 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("user not found")
 	}
 
-	// Find user's account
 	acc, err := s.accountRepo.FindByUserIDAndProvider(u.ID, account.ProviderCredential)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find account: %w", err)
@@ -121,7 +134,6 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("account not found")
 	}
 
-	// Hash new password
 	hashedPassword, err := s.passwordHasher.Hash(strings.TrimSpace(req.NewPassword))
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -139,8 +151,27 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 	_ = s.verificationRepo.Delete(v.ID)
 
 	return &ResetPasswordResponse{
-		Success: true,
+		Message: "Password has been reset successfully",
 	}, nil
+}
+
+func (s *Service) sendResetPasswordEmail(ctx context.Context, user *user.User, token string, callbackURL string) {
+	if s.config.EmailAndPassword == nil || !s.config.EmailAndPassword.Enabled || s.config.EmailAndPassword.SendResetPassword == nil {
+		return
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	verifyURL := s.buildVerificationURL(token, callbackURL)
+
+	if err := s.config.EmailAndPassword.SendResetPassword(ctx, user, verifyURL, token); err != nil {
+		slog.ErrorContext(ctx, "failed to send reset password email", "user_id", user.ID, "email", user.Email, "error", err)
+		return
+	}
+
+	slog.InfoContext(ctx, "reset password email sent", "user_id", user.ID, "email", user.Email)
 }
 
 // Validate validates the reset password request

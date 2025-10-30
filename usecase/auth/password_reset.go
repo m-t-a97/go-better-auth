@@ -34,7 +34,6 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPassword
 		return nil, fmt.Errorf("email is required")
 	}
 
-	// Find user by email
 	user, err := s.userRepo.FindByEmail(req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
@@ -44,7 +43,6 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPassword
 		return nil, fmt.Errorf("user not found")
 	}
 
-	// Generate reset token
 	resetToken, err := crypto.GenerateVerificationToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate reset token: %w", err)
@@ -59,7 +57,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPassword
 	}
 
 	now := time.Now()
-	v := &verification.Verification{
+	verification := &verification.Verification{
 		UserID:     user.ID,
 		Identifier: user.Email,
 		Token:      hashedToken,
@@ -69,7 +67,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPassword
 		UpdatedAt:  now,
 	}
 
-	if err := s.verificationRepo.Create(v); err != nil {
+	if err := s.verificationRepo.Create(verification); err != nil {
 		return nil, fmt.Errorf("failed to create password reset token: %w", err)
 	}
 
@@ -78,13 +76,13 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req *RequestPassword
 	}
 
 	return &RequestPasswordResetResponse{
-		Verification: v,
+		Verification: verification,
 	}, nil
 }
 
 // ResetPasswordRequest contains the request data for resetting a password
 type ResetPasswordRequest struct {
-	ResetToken  string
+	Token       string
 	NewPassword string
 }
 
@@ -103,29 +101,29 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	v, err := s.verificationRepo.FindByHashedToken(req.ResetToken)
+	verificationRecord, err := s.verificationRepo.FindByHashedToken(req.Token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reset token: %w", err)
 	}
 
-	if v == nil || v.Type != verification.TypePasswordReset {
+	if verificationRecord == nil || verificationRecord.Type != verification.TypePasswordReset {
 		return nil, fmt.Errorf("invalid reset token")
 	}
 
-	if v.IsExpired() {
+	if verificationRecord.IsExpired() {
 		return nil, fmt.Errorf("reset token has expired")
 	}
 
-	u, err := s.userRepo.FindByEmail(v.Identifier)
+	user, err := s.userRepo.FindByEmail(verificationRecord.Identifier)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if u == nil {
+	if user == nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	acc, err := s.accountRepo.FindByUserIDAndProvider(u.ID, account.ProviderCredential)
+	acc, err := s.accountRepo.FindByUserIDAndProvider(user.ID, account.ProviderCredential)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find account: %w", err)
 	}
@@ -147,8 +145,7 @@ func (s *Service) ResetPassword(req *ResetPasswordRequest) (*ResetPasswordRespon
 		return nil, fmt.Errorf("failed to update password: %w", err)
 	}
 
-	// Delete verification token
-	_ = s.verificationRepo.Delete(v.ID)
+	_ = s.verificationRepo.Delete(verificationRecord.ID)
 
 	return &ResetPasswordResponse{
 		Message: "Password has been reset successfully",
@@ -176,8 +173,8 @@ func (s *Service) sendResetPasswordEmail(ctx context.Context, user *user.User, t
 
 // Validate validates the reset password request
 func (req *ResetPasswordRequest) Validate() error {
-	if req.ResetToken == "" {
-		return fmt.Errorf("reset token is required")
+	if req.Token == "" {
+		return fmt.Errorf("token is required")
 	}
 
 	if strings.TrimSpace(req.NewPassword) == "" {

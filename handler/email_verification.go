@@ -19,7 +19,7 @@ type SendEmailVerificationResponse struct {
 	Status bool `json:"status"`
 }
 
-// SendEmailVerificationHandler handles POST /auth/send-email-verification
+// SendEmailVerificationHandler handles POST /auth/email-verification
 func SendEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -57,9 +57,9 @@ func SendEmailVerificationHandler(svc *auth.Service) http.HandlerFunc {
 
 // VerifyEmailResponse is the HTTP response for verifying email
 type VerifyEmailResponse struct {
-	Status     bool   `json:"status"`
-	Type       string `json:"type"`
-	ResetToken string `json:"reset_token,omitempty"`
+	Status bool   `json:"status"`
+	Type   string `json:"type"`
+	Token  string `json:"token,omitempty"`
 }
 
 // VerifyEmailHandler handles GET /auth/verify-email?token={token}&callbackURL={callbackURL} OR POST /auth/verify-email
@@ -138,9 +138,6 @@ func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 				if resp != nil && resp.Type != "" {
 					query.Set("type", string(resp.Type))
 				}
-				if resp != nil && resp.ResetToken != "" {
-					query.Set("reset_token", resp.ResetToken)
-				}
 				redirectURL.RawQuery = query.Encode()
 
 				http.Redirect(w, r, redirectURL.String(), http.StatusSeeOther)
@@ -149,9 +146,9 @@ func VerifyEmailHandler(svc *auth.Service) http.HandlerFunc {
 		}
 
 		SuccessResponse(w, http.StatusOK, &VerifyEmailResponse{
-			Status:     resp.Status,
-			Type:       string(resp.Type),
-			ResetToken: resp.ResetToken,
+			Status: resp.Status,
+			Type:   string(resp.Type),
+			Token:  resp.Token,
 		})
 	}
 }

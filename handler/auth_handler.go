@@ -55,9 +55,9 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ValidateSessionHandler(h.service)(w, r)
 		case "refresh":
 			RefreshTokenHandler(h.service)(w, r)
-		case "send-email-verification":
+		case "email-verification":
 			SendEmailVerificationHandler(h.service)(w, r)
-		case "send-password-reset":
+		case "password-reset":
 			SendPasswordResetHandler(h.service)(w, r)
 		case "reset-password":
 			ResetPasswordHandler(h.service)(w, r)

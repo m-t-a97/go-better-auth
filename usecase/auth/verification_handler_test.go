@@ -267,12 +267,12 @@ func TestVerifyEmailUnified(t *testing.T) {
 				}
 
 				if tt.setupVerif != nil && tt.setupVerif.Type == verification.TypePasswordReset {
-					if resp.ResetToken == "" {
+					if resp.Token == "" {
 						t.Fatal("expected reset token in response")
 					}
-					// The reset token in the response is the hashed version from the DB
+
 					expectedHashedToken := crypto.HashVerificationToken(tt.setupVerif.Token)
-					if resp.ResetToken != expectedHashedToken {
+					if resp.Token != expectedHashedToken {
 						t.Fatalf("expected reset token to match hashed version")
 					}
 

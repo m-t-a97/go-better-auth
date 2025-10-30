@@ -18,7 +18,7 @@ type RequestPasswordResetResponse struct {
 	Message string `json:"message"`
 }
 
-// SendPasswordResetHandler handles POST /auth/send-password-reset
+// SendPasswordResetHandler handles POST /auth/password-reset
 func SendPasswordResetHandler(svc *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -88,7 +88,7 @@ func ResetPasswordHandler(svc *auth.Service) http.HandlerFunc {
 
 		// Call use case
 		_, err := svc.ResetPassword(&auth.ResetPasswordRequest{
-			ResetToken:  req.Token,
+			Token:       req.Token,
 			NewPassword: req.NewPassword,
 		})
 		if err != nil {

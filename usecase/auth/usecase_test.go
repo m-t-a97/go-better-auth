@@ -109,7 +109,6 @@ func TestValidateSession_NotFound(t *testing.T) {
 func TestRefreshToken_Valid(t *testing.T) {
 	sessionRepo := memory.NewSessionRepository()
 
-	// Create a session
 	testSession := createTestSession()
 	testSession.ExpiresAt = time.Now().Add(24 * time.Hour)
 	sessionRepo.Create(testSession)
@@ -147,13 +146,11 @@ func TestRefreshToken_Valid(t *testing.T) {
 		t.Error("Expected session expiration to be refreshed")
 	}
 
-	// Verify old token is no longer valid
 	_, err = sessionRepo.FindByToken(oldToken)
 	if err == nil {
 		t.Error("Expected old token to be invalid")
 	}
 
-	// Verify new token exists
 	foundSession, err := sessionRepo.FindByToken(resp.Session.Token)
 	if err != nil || foundSession == nil {
 		t.Error("Expected to find new session token")
@@ -163,7 +160,6 @@ func TestRefreshToken_Valid(t *testing.T) {
 func TestRefreshToken_Expired(t *testing.T) {
 	sessionRepo := memory.NewSessionRepository()
 
-	// Create an expired session
 	testSession := createTestSession()
 	testSession.ExpiresAt = time.Now().Add(-1 * time.Hour)
 	sessionRepo.Create(testSession)
@@ -190,7 +186,6 @@ func TestRequestPasswordReset_Valid(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	verificationRepo := memory.NewVerificationRepository()
 
-	// Create a user
 	testUser := createTestUser()
 	userRepo.Create(testUser)
 
@@ -223,7 +218,6 @@ func TestRequestPasswordReset_Valid(t *testing.T) {
 		t.Errorf("Expected identifier %s, got %s", testUser.Email, resp.Verification.Identifier)
 	}
 
-	// Verify token is stored
 	v, err := verificationRepo.FindByToken(resp.Verification.Token)
 	if err != nil || v == nil {
 		t.Error("Expected verification token to be stored")
@@ -235,7 +229,6 @@ func TestResetPassword_Valid(t *testing.T) {
 	accountRepo := memory.NewAccountRepository()
 	verificationRepo := memory.NewVerificationRepository()
 
-	// Create a user with account
 	testUser := createTestUser()
 	userRepo.Create(testUser)
 
@@ -244,10 +237,10 @@ func TestResetPassword_Valid(t *testing.T) {
 	testAccount := createTestAccount(testUser.ID, &hashedOldPassword)
 	accountRepo.Create(testAccount)
 
-	// Create a password reset token
 	resetToken := "reset-token-12345"
 	hashedResetToken := crypto.HashVerificationToken(resetToken)
 	v := &verification.Verification{
+		UserID:     testUser.ID,
 		Identifier: testUser.Email,
 		Token:      hashedResetToken,
 		Type:       verification.TypePasswordReset,
@@ -261,7 +254,7 @@ func TestResetPassword_Valid(t *testing.T) {
 		createTestConfig(), userRepo, memory.NewSessionRepository(), accountRepo, verificationRepo)
 
 	req := &ResetPasswordRequest{
-		ResetToken:  resetToken,
+		Token:       resetToken,
 		NewPassword: "NewPassword456!",
 	}
 
@@ -274,25 +267,21 @@ func TestResetPassword_Valid(t *testing.T) {
 		t.Error("Expected reset password to succeed")
 	}
 
-	// Verify password was updated
 	updatedAccount, err := accountRepo.FindByID(testAccount.ID)
 	if err != nil || updatedAccount == nil {
 		t.Fatal("Failed to find updated account")
 	}
 
-	// Verify old password doesn't work
 	matches, err := crypto.VerifyPassword(oldPassword, *updatedAccount.Password)
 	if err != nil || matches {
 		t.Error("Old password should not match")
 	}
 
-	// Verify new password works
 	matches, err = crypto.VerifyPassword(req.NewPassword, *updatedAccount.Password)
 	if err != nil || !matches {
 		t.Error("New password should match")
 	}
 
-	// Verify token is deleted
 	_, err = verificationRepo.FindByHashedToken(resetToken)
 	if err == nil {
 		t.Error("Expected reset token to be deleted")
@@ -309,7 +298,7 @@ func TestResetPassword_InvalidToken(t *testing.T) {
 	)
 
 	req := &ResetPasswordRequest{
-		ResetToken:  "invalid-token",
+		Token:       "invalid-token",
 		NewPassword: "NewPassword456!",
 	}
 
@@ -352,12 +341,10 @@ func TestVerifyEmail_Valid(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 	verificationRepo := memory.NewVerificationRepository()
 
-	// Create a user with unverified email
 	testUser := createTestUser()
 	testUser.EmailVerified = false
 	userRepo.Create(testUser)
 
-	// Create an email verification token
 	verificationToken := "verify-token-12345"
 	hashedVerificationToken := crypto.HashVerificationToken(verificationToken)
 	v := &verification.Verification{
@@ -390,7 +377,6 @@ func TestVerifyEmail_Valid(t *testing.T) {
 		t.Fatal("VerifyEmail returned false status")
 	}
 
-	// Verify email is now verified
 	updatedUser, err := userRepo.FindByID(testUser.ID)
 	if err != nil || updatedUser == nil {
 		t.Fatal("Failed to find updated user")
@@ -400,7 +386,6 @@ func TestVerifyEmail_Valid(t *testing.T) {
 		t.Error("Expected email to be verified")
 	}
 
-	// Verify token is deleted
 	_, err = verificationRepo.FindByHashedToken(verificationToken)
 	if err == nil {
 		t.Error("Expected verification token to be deleted")
@@ -410,13 +395,12 @@ func TestVerifyEmail_Valid(t *testing.T) {
 func TestVerifyEmail_ExpiredToken(t *testing.T) {
 	verificationRepo := memory.NewVerificationRepository()
 
-	// Create an expired verification token
 	expiredToken := "expired-verify-token"
 	v := &verification.Verification{
 		Identifier: "test@example.com",
 		Token:      expiredToken,
 		Type:       verification.TypeEmailVerification,
-		ExpiresAt:  time.Now().Add(-1 * time.Hour), // Expired
+		ExpiresAt:  time.Now().Add(-1 * time.Hour),
 		CreatedAt:  time.Now().Add(-2 * time.Hour),
 		UpdatedAt:  time.Now().Add(-2 * time.Hour),
 	}
@@ -443,7 +427,6 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 func TestGetProfile_Valid(t *testing.T) {
 	userRepo := memory.NewUserRepository()
 
-	// Create a user
 	testUser := createTestUser()
 	userRepo.Create(testUser)
 
@@ -505,7 +488,6 @@ func TestPasswordHasher_Default(t *testing.T) {
 		memory.NewVerificationRepository(),
 	)
 
-	// Test that default password hasher is used
 	password := "test-password-123"
 	hash, err := service.passwordHasher.Hash(password)
 	if err != nil {
@@ -516,7 +498,6 @@ func TestPasswordHasher_Default(t *testing.T) {
 		t.Error("Expected non-empty hash")
 	}
 
-	// Test verification
 	valid, err := service.passwordHasher.Verify(password, hash)
 	if err != nil {
 		t.Fatalf("Failed to verify password: %v", err)
@@ -526,7 +507,6 @@ func TestPasswordHasher_Default(t *testing.T) {
 		t.Error("Expected password to be valid")
 	}
 
-	// Test invalid password
 	valid, err = service.passwordHasher.Verify("wrong-password", hash)
 	if err != nil {
 		t.Fatalf("Failed to verify wrong password: %v", err)
@@ -538,7 +518,6 @@ func TestPasswordHasher_Default(t *testing.T) {
 }
 
 func TestPasswordHasher_Custom(t *testing.T) {
-	// Create custom hash and verify functions
 	customHash := func(password string) (string, error) {
 		return "custom-hash-" + password, nil
 	}
@@ -565,7 +544,6 @@ func TestPasswordHasher_Custom(t *testing.T) {
 		memory.NewVerificationRepository(),
 	)
 
-	// Test custom password hasher
 	password := "test-password-123"
 	hash, err := service.passwordHasher.Hash(password)
 	if err != nil {
@@ -577,7 +555,6 @@ func TestPasswordHasher_Custom(t *testing.T) {
 		t.Errorf("Expected hash %q, got %q", expectedHash, hash)
 	}
 
-	// Test verification
 	valid, err := service.passwordHasher.Verify(password, hash)
 	if err != nil {
 		t.Fatalf("Failed to verify password: %v", err)
@@ -587,7 +564,6 @@ func TestPasswordHasher_Custom(t *testing.T) {
 		t.Error("Expected password to be valid")
 	}
 
-	// Test invalid password
 	valid, err = service.passwordHasher.Verify("wrong-password", hash)
 	if err != nil {
 		t.Fatalf("Failed to verify wrong password: %v", err)
@@ -599,7 +575,6 @@ func TestPasswordHasher_Custom(t *testing.T) {
 }
 
 func TestPasswordHasher_CustomHashOnly(t *testing.T) {
-	// Test with only custom hash function (should fall back to default hasher)
 	customHash := func(password string) (string, error) {
 		return "custom-hash-" + password, nil
 	}
@@ -609,7 +584,6 @@ func TestPasswordHasher_CustomHashOnly(t *testing.T) {
 		Enabled: true,
 		Password: &domain.PasswordConfig{
 			Hash: customHash,
-			// No Verify function provided
 		},
 	}
 
@@ -621,14 +595,12 @@ func TestPasswordHasher_CustomHashOnly(t *testing.T) {
 		memory.NewVerificationRepository(),
 	)
 
-	// Should fall back to default hasher since verify is not provided
 	password := "test-password-123"
 	hash, err := service.passwordHasher.Hash(password)
 	if err != nil {
 		t.Fatalf("Failed to hash password: %v", err)
 	}
 
-	// Should be default hash, not custom
 	if hash == "custom-hash-"+password {
 		t.Error("Expected default hash, got custom hash")
 	}

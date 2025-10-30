@@ -16,9 +16,9 @@ type VerifyEmailRequest struct {
 
 // VerifyEmailResponse contains the response data for verifying an email
 type VerifyEmailResponse struct {
-	Status     bool                          `json:"status"`
-	Type       verification.VerificationType `json:"type"`
-	ResetToken string                        `json:"reset_token,omitempty"`
+	Status bool                          `json:"status"`
+	Type   verification.VerificationType `json:"type"`
+	Token  string                        `json:"token,omitempty"`
 }
 
 // VerifyEmail is the unified use case for handling all verification types
@@ -33,51 +33,49 @@ func (s *Service) VerifyEmail(ctx context.Context, req *VerifyEmailRequest) (*Ve
 	}
 
 	// Find verification token by matching the plain token against hashed tokens
-	verif, err := s.verificationRepo.FindByHashedToken(req.VerificationToken)
+	verificationRecord, err := s.verificationRepo.FindByHashedToken(req.VerificationToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find verification token: %w", err)
 	}
 
-	if verif == nil {
+	if verificationRecord == nil {
 		return nil, fmt.Errorf("invalid verification token")
 	}
 
-	// Check if token has expired
-	if verif.IsExpired() {
+	if verificationRecord.IsExpired() {
 		return nil, fmt.Errorf("verification token has expired")
 	}
 
-	var resetToken string
+	var token string
 
 	// Route to appropriate handler based on verification type
-	switch verif.Type {
+	switch verificationRecord.Type {
 	case verification.TypeEmailVerification:
-		if err := s.handleEmailVerification(verif); err != nil {
+		if err := s.handleEmailVerification(verificationRecord); err != nil {
 			return nil, err
 		}
 	case verification.TypeEmailChange:
-		if err := s.handleEmailChange(verif); err != nil {
+		if err := s.handleEmailChange(verificationRecord); err != nil {
 			return nil, err
 		}
 	case verification.TypePasswordReset:
-		if err := s.handlePasswordReset(verif); err != nil {
+		if err := s.handlePasswordReset(verificationRecord); err != nil {
 			return nil, err
 		}
-		resetToken = verif.Token
+		token = verificationRecord.Token
 	default:
-		return nil, fmt.Errorf("unknown verification type: %s", verif.Type)
+		return nil, fmt.Errorf("unknown verification type: %s", verificationRecord.Type)
 	}
 
 	return &VerifyEmailResponse{
-		Status:     true,
-		Type:       verif.Type,
-		ResetToken: resetToken,
+		Status: true,
+		Type:   verificationRecord.Type,
+		Token:  token,
 	}, nil
 }
 
 // handleEmailVerification handles email verification type
 func (s *Service) handleEmailVerification(verif *verification.Verification) error {
-	// Find user by email (identifier in this case)
 	userFound, err := s.userRepo.FindByEmail(verif.Identifier)
 	if err != nil {
 		return fmt.Errorf("failed to find user: %w", err)
@@ -87,7 +85,6 @@ func (s *Service) handleEmailVerification(verif *verification.Verification) erro
 		return fmt.Errorf("user not found")
 	}
 
-	// Mark email as verified
 	userFound.EmailVerified = true
 	userFound.UpdatedAt = time.Now()
 
@@ -95,18 +92,14 @@ func (s *Service) handleEmailVerification(verif *verification.Verification) erro
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	// Delete verification token
 	_ = s.verificationRepo.Delete(verif.ID)
 
 	return nil
 }
 
-// handleEmailChange handles email change type
 func (s *Service) handleEmailChange(verif *verification.Verification) error {
-	// The verif.Identifier contains the new email address
 	newEmail := verif.Identifier
 
-	// Check if new email is still available (safety check)
 	emailExists, err := s.userRepo.ExistsByEmail(newEmail)
 	if err != nil {
 		return fmt.Errorf("failed to check email existence: %w", err)
@@ -121,7 +114,6 @@ func (s *Service) handleEmailChange(verif *verification.Verification) error {
 		return fmt.Errorf("invalid email: %w", err)
 	}
 
-	// Find user by user ID stored in verification record
 	userToUpdate, err := s.userRepo.FindByID(verif.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to find user: %w", err)
@@ -131,7 +123,6 @@ func (s *Service) handleEmailChange(verif *verification.Verification) error {
 		return fmt.Errorf("user not found")
 	}
 
-	// Update user's email
 	userToUpdate.Email = newEmail
 	userToUpdate.UpdatedAt = time.Now()
 
@@ -139,7 +130,6 @@ func (s *Service) handleEmailChange(verif *verification.Verification) error {
 		return fmt.Errorf("failed to update user email: %w", err)
 	}
 
-	// Delete verification token
 	_ = s.verificationRepo.Delete(verif.ID)
 
 	return nil
@@ -147,7 +137,6 @@ func (s *Service) handleEmailChange(verif *verification.Verification) error {
 
 // handlePasswordReset handles password reset type
 func (s *Service) handlePasswordReset(verif *verification.Verification) error {
-	// Find user by email (identifier in this case)
 	userFound, err := s.userRepo.FindByEmail(verif.Identifier)
 	if err != nil {
 		return fmt.Errorf("failed to find user: %w", err)

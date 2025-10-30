@@ -146,6 +146,7 @@ func (s *Service) sendVerificationEmailAsync(ctx context.Context, user *user.Use
 
 	// Create verification record with hashed token
 	newVerification := &verification.Verification{
+		UserID:     user.ID,
 		Identifier: user.Email,
 		Token:      hashedToken,
 		Type:       verification.TypeEmailVerification,

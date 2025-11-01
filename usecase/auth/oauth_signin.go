@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -15,9 +16,9 @@ import (
 
 // OAuthSignInRequest represents a request to sign in via OAuth
 type OAuthSignInRequest struct {
-	ProviderID  account.ProviderType
-	OAuthUser   *account.OAuthUser
-	OAuthTokens *account.OAuthTokens
+	ProviderID  account.ProviderType `validate:"required"`
+	OAuthUser   *account.OAuthUser   `validate:"required"`
+	OAuthTokens *account.OAuthTokens `validate:"required"`
 }
 
 // OAuthSignInResponse represents the response from OAuth sign in
@@ -26,6 +27,128 @@ type OAuthSignInResponse struct {
 	Session   *session.Session `json:"session"`
 	Account   *account.Account `json:"account"`
 	IsNewUser bool             `json:"is_new_user"`
+}
+
+// findOrCreateUserForOAuth finds or creates a user for OAuth sign-in
+// Returns the user, whether it's a new user, and any error
+func (s *Service) findOrCreateUserForOAuth(ctx context.Context, oauthUser *account.OAuthUser) (*user.User, bool, error) {
+	// Try to find existing user by email
+	existingUser, err := s.userRepo.FindByEmail(oauthUser.Email)
+	if err != nil && !errors.Is(err, user.ErrUserNotFound) {
+		return nil, false, fmt.Errorf("failed to lookup user: %w", err)
+	}
+
+	if existingUser != nil {
+		slog.InfoContext(ctx, "found existing user for oauth signin",
+			"user_id", existingUser.ID,
+			"email", existingUser.Email,
+		)
+		return existingUser, false, nil
+	}
+
+	// Create new user from OAuth profile
+	newUser, err := s.createUserFromOAuth(ctx, oauthUser)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create user from oauth: %w", err)
+	}
+
+	slog.InfoContext(ctx, "created new user from oauth",
+		"user_id", newUser.ID,
+		"email", newUser.Email,
+	)
+
+	return newUser, true, nil
+}
+
+// linkOrUpdateOAuthAccount links a new OAuth account or updates an existing one
+func (s *Service) linkOrUpdateOAuthAccount(ctx context.Context, userID string, providerID account.ProviderType, oauthUser *account.OAuthUser, tokens *account.OAuthTokens) (*account.Account, error) {
+	// Check if OAuth account is already linked
+	existingAccount, err := s.accountRepo.FindByUserIDAndProvider(userID, providerID)
+	if err != nil && !errors.Is(err, account.ErrAccountNotFound) {
+		return nil, fmt.Errorf("failed to check existing account: %w", err)
+	}
+
+	if existingAccount == nil {
+		// Link new OAuth account
+		accountRecord, err := s.linkOAuthAccountInternal(ctx, userID, providerID, oauthUser, tokens)
+		if err != nil {
+			return nil, fmt.Errorf("failed to link oauth account: %w", err)
+		}
+
+		slog.InfoContext(ctx, "linked oauth account to user",
+			"user_id", userID,
+			"provider", providerID,
+			"account_id", accountRecord.ID,
+		)
+
+		return accountRecord, nil
+	}
+
+	// Update existing account with new tokens
+	existingAccount.AccessToken = tokens.AccessToken
+	existingAccount.RefreshToken = tokens.RefreshToken
+	existingAccount.IDToken = tokens.IDToken
+	if tokens.AccessTokenExpiresAt != nil {
+		existingAccount.AccessTokenExpiresAt = tokens.AccessTokenExpiresAt
+	}
+	existingAccount.Scope = &tokens.Scope
+	existingAccount.UpdatedAt = time.Now()
+
+	err = s.accountRepo.Update(existingAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update account tokens: %w", err)
+	}
+
+	slog.InfoContext(ctx, "updated oauth account tokens",
+		"user_id", userID,
+		"provider", providerID,
+		"account_id", existingAccount.ID,
+	)
+
+	return existingAccount, nil
+}
+
+// syncOAuthProfileData syncs user profile data from OAuth provider
+func (s *Service) syncOAuthProfileData(ctx context.Context, userRecord *user.User, providerID account.ProviderType, oauthUser *account.OAuthUser) error {
+	syncReq := &SyncProviderDataRequest{
+		UserID:     userRecord.ID,
+		ProviderID: providerID,
+		OAuthUser:  oauthUser,
+		UpdateUser: true,
+	}
+
+	_, err := s.SyncProviderData(ctx, syncReq)
+	return err
+}
+
+// createSessionForUser creates a new session for a user
+func (s *Service) createSessionForUser(userID string) (*session.Session, error) {
+	sessionToken, err := crypto.GenerateSessionToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate session token: %w", err)
+	}
+
+	// Use configured session expiration time, default to 24 hours if not set
+	expiresIn := 24 * time.Hour
+	if s.config != nil && s.config.Session != nil && s.config.Session.ExpiresIn > 0 {
+		expiresIn = s.config.Session.ExpiresIn
+	}
+
+	sess := &session.Session{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Token:     sessionToken,
+		ExpiresAt: time.Now().Add(expiresIn),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	err = s.sessionRepo.Create(sess)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	return sess, nil
 }
 
 // OAuthSignIn handles OAuth signin/signup flow
@@ -56,133 +179,48 @@ func (s *Service) OAuthSignIn(ctx context.Context, req *OAuthSignInRequest) (*OA
 		return nil, fmt.Errorf("oauth_tokens cannot be nil")
 	}
 
-	// Try to find existing user by email
-	existingUser, err := s.userRepo.FindByEmail(req.OAuthUser.Email)
-	if err != nil && err.Error() != "user not found" {
-		return nil, fmt.Errorf("failed to lookup user: %w", err)
+	// Step 1: Find or create user
+	userRecord, isNewUser, err := s.findOrCreateUserForOAuth(ctx, req.OAuthUser)
+	if err != nil {
+		return nil, err
 	}
 
-	var userRecord *user.User
-	var isNewUser bool
-
-	if existingUser == nil {
-		// Create new user from OAuth profile
-		userRecord, err = s.createUserFromOAuth(ctx, req.OAuthUser)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create user from oauth: %w", err)
-		}
-		isNewUser = true
-
-		slog.InfoContext(ctx, "created new user from oauth",
-			"user_id", userRecord.ID,
-			"email", userRecord.Email,
-			"provider", req.ProviderID,
-		)
-	} else {
-		userRecord = existingUser
-		isNewUser = false
-
-		slog.InfoContext(ctx, "found existing user for oauth signin",
-			"user_id", userRecord.ID,
-			"email", userRecord.Email,
-			"provider", req.ProviderID,
-		)
+	// Step 2: Link or update OAuth account
+	accountRecord, err := s.linkOrUpdateOAuthAccount(ctx, userRecord.ID, req.ProviderID, req.OAuthUser, req.OAuthTokens)
+	if err != nil {
+		return nil, err
 	}
 
-	// Check if OAuth account is already linked
-	existingAccount, err := s.accountRepo.FindByUserIDAndProvider(userRecord.ID, req.ProviderID)
-	if err != nil && err.Error() != "account not found" {
-		return nil, fmt.Errorf("failed to check existing account: %w", err)
-	}
-
-	var accountRecord *account.Account
-
-	if existingAccount == nil {
-		// Link the OAuth account
-		accountRecord, err = s.linkOAuthAccountInternal(ctx, userRecord.ID, req.ProviderID, req.OAuthUser, req.OAuthTokens)
-		if err != nil {
-			return nil, fmt.Errorf("failed to link oauth account: %w", err)
-		}
-
-		slog.InfoContext(ctx, "linked oauth account to user",
-			"user_id", userRecord.ID,
-			"provider", req.ProviderID,
-			"account_id", accountRecord.ID,
-		)
-	} else {
-		// Update existing account with new tokens
-		existingAccount.AccessToken = &req.OAuthTokens.AccessToken
-		existingAccount.RefreshToken = req.OAuthTokens.RefreshToken
-		existingAccount.IDToken = req.OAuthTokens.IDToken
-		if req.OAuthTokens.AccessTokenExpiresAt != nil {
-			existingAccount.AccessTokenExpiresAt = req.OAuthTokens.AccessTokenExpiresAt
-		}
-		existingAccount.Scope = &req.OAuthTokens.Scope
-		existingAccount.UpdatedAt = time.Now()
-
-		err = s.accountRepo.Update(existingAccount)
-		if err != nil {
-			return nil, fmt.Errorf("failed to update account tokens: %w", err)
-		}
-
-		accountRecord = existingAccount
-
-		slog.InfoContext(ctx, "updated oauth account tokens",
-			"user_id", userRecord.ID,
-			"provider", req.ProviderID,
-			"account_id", accountRecord.ID,
-		)
-	}
-
-	// Sync user profile data from OAuth provider (if not a new user)
+	// Step 3: Sync user profile data if not a new user
 	if !isNewUser {
-		syncReq := &SyncProviderDataRequest{
-			UserID:     userRecord.ID,
-			ProviderID: req.ProviderID,
-			OAuthUser:  req.OAuthUser,
-			UpdateUser: true,
-		}
-
-		_, err = s.SyncProviderData(ctx, syncReq)
-		if err != nil {
+		if err := s.syncOAuthProfileData(ctx, userRecord, req.ProviderID, req.OAuthUser); err != nil {
 			// Log the error but don't fail the signin
-			slog.WarnContext(ctx, "failed to sync provider data",
+			slog.WarnContext(
+				ctx,
+				"failed to sync provider data during oauth signin",
 				"user_id", userRecord.ID,
 				"provider", req.ProviderID,
 				"error", err,
 			)
+		} else {
+			// Reload user after sync
+			reloadedUser, err := s.userRepo.FindByID(userRecord.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to reload user after sync: %w", err)
+			}
+			userRecord = reloadedUser
 		}
-
-		// Reload user after sync
-		userRecord, err = s.userRepo.FindByID(userRecord.ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to reload user after sync: %w", err)
-		}
 	}
 
-	// Create a new session
-	sessionToken, err := crypto.GenerateSessionToken()
+	// Step 4: Create a new session
+	session, err := s.createSessionForUser(userRecord.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate session token: %w", err)
-	}
-
-	sess := &session.Session{
-		ID:        uuid.New().String(),
-		UserID:    userRecord.ID,
-		Token:     sessionToken,
-		ExpiresAt: time.Now().Add(24 * time.Hour), // 24 hour session
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	err = s.sessionRepo.Create(sess)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %w", err)
+		return nil, err
 	}
 
 	return &OAuthSignInResponse{
 		User:      userRecord,
-		Session:   sess,
+		Session:   session,
 		Account:   accountRecord,
 		IsNewUser: isNewUser,
 	}, nil
@@ -194,7 +232,7 @@ func (s *Service) createUserFromOAuth(ctx context.Context, oauthUser *account.OA
 		ID:            uuid.New().String(),
 		Email:         oauthUser.Email,
 		Name:          oauthUser.Name,
-		EmailVerified: true, // OAuth providers verify emails
+		EmailVerified: true,
 		Image:         oauthUser.Picture,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -215,7 +253,7 @@ func (s *Service) linkOAuthAccountInternal(ctx context.Context, userID string, p
 		UserID:                userID,
 		ProviderID:            providerID,
 		AccountID:             oauthUser.ID,
-		AccessToken:           &tokens.AccessToken,
+		AccessToken:           tokens.AccessToken,
 		RefreshToken:          tokens.RefreshToken,
 		IDToken:               tokens.IDToken,
 		AccessTokenExpiresAt:  tokens.AccessTokenExpiresAt,

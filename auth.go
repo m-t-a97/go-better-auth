@@ -2,8 +2,10 @@ package gobetterauth
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/m-t-a97/go-better-auth/adapter"
 	"github.com/m-t-a97/go-better-auth/adapter/postgres"
@@ -14,9 +16,11 @@ import (
 	"github.com/m-t-a97/go-better-auth/handler"
 	"github.com/m-t-a97/go-better-auth/internal/crypto"
 	"github.com/m-t-a97/go-better-auth/middleware"
+	"github.com/m-t-a97/go-better-auth/repository"
 	"github.com/m-t-a97/go-better-auth/repository/cached"
 	"github.com/m-t-a97/go-better-auth/repository/memory"
 	"github.com/m-t-a97/go-better-auth/repository/secondary"
+	"github.com/m-t-a97/go-better-auth/storage"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
 	"github.com/m-t-a97/go-better-auth/usecase/ratelimit"
 	"github.com/m-t-a97/go-better-auth/usecase/security_protection"
@@ -170,6 +174,70 @@ func (a *Auth) Handler() http.Handler {
 	// Create the base auth handler
 	baseHandler := handler.NewAuthHandler(service)
 
+	// Initialize OAuth if social providers are configured
+	var oauthHandler *handler.OAuthHandler
+	if a.config.SocialProviders != nil {
+		providerRegistry := memory.NewOAuthProviderRegistry()
+		stateManager, err := storage.NewOAuthStateManager(a.config.Secret, 10*time.Minute)
+		if err != nil {
+			slog.Warn("failed to create OAuth state manager", "error", err)
+		} else {
+			// Register Google provider if configured
+			if a.config.SocialProviders.Google != nil {
+				googleProvider, err := repository.NewGoogleOAuthProvider(
+					a.config.SocialProviders.Google.ClientID,
+					a.config.SocialProviders.Google.ClientSecret,
+					a.config.SocialProviders.Google.RedirectURI,
+				)
+				if err != nil {
+					slog.Warn("failed to initialize Google OAuth provider", "error", err)
+				} else {
+					if err := providerRegistry.Register(googleProvider); err != nil {
+						slog.Warn("failed to register Google OAuth provider", "error", err)
+					}
+				}
+			}
+
+			// Register GitHub provider if configured
+			if a.config.SocialProviders.GitHub != nil {
+				githubProvider, err := repository.NewGitHubOAuthProvider(
+					a.config.SocialProviders.GitHub.ClientID,
+					a.config.SocialProviders.GitHub.ClientSecret,
+					a.config.SocialProviders.GitHub.RedirectURI,
+				)
+				if err != nil {
+					slog.Warn("failed to initialize GitHub OAuth provider", "error", err)
+				} else {
+					if err := providerRegistry.Register(githubProvider); err != nil {
+						slog.Warn("failed to register GitHub OAuth provider", "error", err)
+					}
+				}
+			}
+
+			// Register Discord provider if configured
+			if a.config.SocialProviders.Discord != nil {
+				discordProvider, err := repository.NewDiscordOAuthProvider(
+					a.config.SocialProviders.Discord.ClientID,
+					a.config.SocialProviders.Discord.ClientSecret,
+					a.config.SocialProviders.Discord.RedirectURI,
+				)
+				if err != nil {
+					slog.Warn("failed to initialize Discord OAuth provider", "error", err)
+				} else {
+					if err := providerRegistry.Register(discordProvider); err != nil {
+						slog.Warn("failed to register Discord OAuth provider", "error", err)
+					}
+				}
+			}
+
+			// Create OAuth handler if any providers were registered
+			registeredProviders := providerRegistry.List()
+			if len(registeredProviders) > 0 {
+				oauthHandler = handler.NewOAuthHandler(service, stateManager, providerRegistry)
+			}
+		}
+	}
+
 	// Apply rate limiting middleware if configured and secondary storage is available
 	var handlerWithMiddleware http.Handler = baseHandler
 	if a.config.RateLimit != nil && a.config.RateLimit.Enabled && a.config.SecondaryStorage != nil {
@@ -181,6 +249,11 @@ func (a *Auth) Handler() http.Handler {
 	// Apply hooks middleware (before and after request hooks)
 	hooksMiddleware := middleware.HooksMiddleware(a.config)
 	handlerWithMiddleware = hooksMiddleware(handlerWithMiddleware)
+
+	// Compose OAuth routes with base handler if OAuth is enabled
+	if oauthHandler != nil {
+		handlerWithMiddleware = a.composeWithOAuth(handlerWithMiddleware, oauthHandler)
+	}
 
 	// Wrap with CORS middleware if trusted origins are configured
 	if a.config.TrustedOrigins.StaticOrigins != nil || a.config.TrustedOrigins.DynamicOrigins != nil {
@@ -228,6 +301,25 @@ func (a *Auth) authService() *auth.Service {
 	}
 
 	return service
+}
+
+// composeWithOAuth wraps the base handler with OAuth routing capability
+// It creates a composite handler that delegates to either the base auth handler or OAuth handler
+// based on the request path
+func (a *Auth) composeWithOAuth(baseHandler http.Handler, oauthHandler *handler.OAuthHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Check if this is an OAuth request
+		// OAuth paths: /auth/oauth/{provider}, /auth/oauth/{provider}/callback, etc.
+		if strings.Contains(path, "/oauth/") {
+			oauthHandler.ServeHTTP(w, r)
+			return
+		}
+
+		// Delegate to base handler for all other auth paths
+		baseHandler.ServeHTTP(w, r)
+	})
 }
 
 // AuthMiddleware returns a ready-to-use authentication middleware

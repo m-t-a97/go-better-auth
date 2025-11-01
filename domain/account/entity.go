@@ -1,8 +1,14 @@
 package account
 
 import (
+	"errors"
 	"fmt"
 	"time"
+)
+
+// Error types for account operations
+var (
+	ErrAccountNotFound = errors.New("account not found")
 )
 
 // ProviderType defines the type of authentication provider

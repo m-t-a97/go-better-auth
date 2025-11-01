@@ -1,9 +1,15 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"net/mail"
 	"time"
+)
+
+// Error types for user operations
+var (
+	ErrUserNotFound = errors.New("user not found")
 )
 
 // User represents an authenticated user in the system

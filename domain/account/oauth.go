@@ -19,12 +19,12 @@ type OAuthUser struct {
 	Email   string
 	Name    string
 	Picture *string
-	RawData map[string]interface{}
+	RawData map[string]any
 }
 
 // OAuthTokens represents tokens returned from OAuth provider
 type OAuthTokens struct {
-	AccessToken           string
+	AccessToken           *string
 	RefreshToken          *string
 	IDToken               *string
 	AccessTokenExpiresAt  *time.Time

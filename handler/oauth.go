@@ -8,6 +8,7 @@ import (
 	"github.com/m-t-a97/go-better-auth/domain/account"
 	"github.com/m-t-a97/go-better-auth/storage"
 	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/m-t-a97/go-better-auth/validation"
 )
 
 // OAuthHandler handles OAuth authentication endpoints
@@ -27,6 +28,41 @@ func NewOAuthHandler(
 		service:      service,
 		stateManager: stateManager,
 		providerReg:  providerReg,
+	}
+}
+
+// ServeHTTP implements http.Handler for OAuth routes
+func (h *OAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	method := r.Method
+
+	// Extract the endpoint from the path
+	// Paths: /auth/oauth/{provider}, /auth/oauth/{provider}/callback, /auth/oauth/accounts
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+
+	if len(parts) < 3 {
+		ErrorResponse(w, http.StatusBadRequest, "Invalid OAuth path")
+		return
+	}
+
+	endpoint := parts[3] // "oauth" is at index 2, provider at index 3
+
+	switch method {
+	case "GET":
+		// Handle authorization start and callback
+		if strings.Contains(endpoint, "callback") {
+			h.HandleOAuthCallback(w, r)
+		} else if endpoint == "accounts" {
+			h.HandleOAuthLinkedAccounts(w, r)
+		} else {
+			// Start OAuth flow: /auth/oauth/{provider}
+			h.HandleOAuthAuthorize(w, r)
+		}
+	case "DELETE":
+		// Unlink OAuth account: DELETE /auth/oauth/{provider}
+		h.HandleOAuthUnlink(w, r)
+	default:
+		ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -194,6 +230,15 @@ func (h *OAuthHandler) HandleOAuthCallback(w http.ResponseWriter, r *http.Reques
 		OAuthTokens: tokens,
 	}
 
+	// Validate request
+	if err := validation.Validate.Struct(signInReq); err != nil {
+		slog.ErrorContext(ctx, "oauth signin request validation failed",
+			"provider", providerID,
+			"error", err)
+		ErrorResponse(w, http.StatusBadRequest, "Invalid OAuth sign-in request")
+		return
+	}
+
 	signInResp, err := h.service.OAuthSignIn(ctx, signInReq)
 	if err != nil {
 		slog.ErrorContext(ctx, "oauth signin failed",
@@ -217,7 +262,7 @@ func (h *OAuthHandler) HandleOAuthCallback(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Build response with token and redirect info
-	SuccessResponse(w, http.StatusOK, map[string]interface{}{
+	SuccessResponse(w, http.StatusOK, map[string]any{
 		"token":       signInResp.Session.Token,
 		"expires_at":  signInResp.Session.ExpiresAt,
 		"user":        signInResp.User,

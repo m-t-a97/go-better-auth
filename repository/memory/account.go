@@ -54,7 +54,7 @@ func (r *AccountRepository) FindByID(id string) (*account.Account, error) {
 		return a, nil
 	}
 
-	return nil, fmt.Errorf("account not found")
+	return nil, account.ErrAccountNotFound
 }
 
 // FindByUserIDAndProvider retrieves a user's account for a specific provider
@@ -68,7 +68,7 @@ func (r *AccountRepository) FindByUserIDAndProvider(userID string, providerID ac
 		}
 	}
 
-	return nil, fmt.Errorf("account not found")
+	return nil, account.ErrAccountNotFound
 }
 
 // FindByUserID retrieves all accounts for a user
@@ -96,7 +96,7 @@ func (r *AccountRepository) Update(a *account.Account) error {
 	}
 
 	if _, ok := r.accounts[a.ID]; !ok {
-		return fmt.Errorf("account not found")
+		return account.ErrAccountNotFound
 	}
 
 	a.UpdatedAt = time.Now()
@@ -110,7 +110,7 @@ func (r *AccountRepository) Delete(id string) error {
 	defer r.mu.Unlock()
 
 	if _, ok := r.accounts[id]; !ok {
-		return fmt.Errorf("account not found")
+		return account.ErrAccountNotFound
 	}
 
 	delete(r.accounts, id)

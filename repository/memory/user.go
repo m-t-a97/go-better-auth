@@ -61,7 +61,7 @@ func (r *UserRepository) FindByID(id string) (*user.User, error) {
 		return u, nil
 	}
 
-	return nil, fmt.Errorf("user not found")
+	return nil, user.ErrUserNotFound
 }
 
 // FindByEmail retrieves a user by email
@@ -75,7 +75,7 @@ func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("user not found")
+	return nil, user.ErrUserNotFound
 }
 
 // Update updates an existing user
@@ -88,7 +88,7 @@ func (r *UserRepository) Update(u *user.User) error {
 	}
 
 	if _, ok := r.users[u.ID]; !ok {
-		return fmt.Errorf("user not found")
+		return user.ErrUserNotFound
 	}
 
 	u.UpdatedAt = time.Now()
@@ -102,7 +102,7 @@ func (r *UserRepository) Delete(id string) error {
 	defer r.mu.Unlock()
 
 	if _, ok := r.users[id]; !ok {
-		return fmt.Errorf("user not found")
+		return user.ErrUserNotFound
 	}
 
 	delete(r.users, id)

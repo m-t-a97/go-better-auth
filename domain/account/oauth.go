@@ -24,7 +24,7 @@ type OAuthUser struct {
 
 // OAuthTokens represents tokens returned from OAuth provider
 type OAuthTokens struct {
-	AccessToken           *string
+	AccessToken           string
 	RefreshToken          *string
 	IDToken               *string
 	AccessTokenExpiresAt  *time.Time

@@ -85,7 +85,7 @@ func (s *Service) linkOrUpdateOAuthAccount(ctx context.Context, userID string, p
 	}
 
 	// Update existing account with new tokens
-	existingAccount.AccessToken = tokens.AccessToken
+	existingAccount.AccessToken = &tokens.AccessToken
 	existingAccount.RefreshToken = tokens.RefreshToken
 	existingAccount.IDToken = tokens.IDToken
 	if tokens.AccessTokenExpiresAt != nil {
@@ -253,7 +253,7 @@ func (s *Service) linkOAuthAccountInternal(ctx context.Context, userID string, p
 		UserID:                userID,
 		ProviderID:            providerID,
 		AccountID:             oauthUser.ID,
-		AccessToken:           tokens.AccessToken,
+		AccessToken:           &tokens.AccessToken,
 		RefreshToken:          tokens.RefreshToken,
 		IDToken:               tokens.IDToken,
 		AccessTokenExpiresAt:  tokens.AccessTokenExpiresAt,

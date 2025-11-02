@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 )
 
 // RefreshTokenRequest contains the request data for refreshing a session token

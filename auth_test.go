@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // RequestPasswordResetRequest is the HTTP request for requesting a password reset

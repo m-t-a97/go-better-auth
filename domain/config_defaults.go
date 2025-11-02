@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/security"
+	"github.com/GoBetterAuth/go-better-auth/domain/security"
 )
 
 // Default configuration values

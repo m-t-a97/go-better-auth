@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

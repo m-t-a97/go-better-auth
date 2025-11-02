@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/repository/memory"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/repository/memory"
 )
 
 func TestDeleteUser_Success(t *testing.T) {

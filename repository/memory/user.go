@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 	"github.com/google/uuid"
-	"github.com/m-t-a97/go-better-auth/domain/user"
 )
 
 // UserRepository implements an in-memory user repository

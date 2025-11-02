@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // AuthMiddleware validates the session token and extracts the user ID from the request

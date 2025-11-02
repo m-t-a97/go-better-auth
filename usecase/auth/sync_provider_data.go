@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
-	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 )
 
 // SyncProviderDataRequest represents a request to sync user data from an OAuth provider

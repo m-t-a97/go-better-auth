@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/repository/memory"
-	"github.com/m-t-a97/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/repository/memory"
+	"github.com/GoBetterAuth/go-better-auth/storage"
 )
 
 func TestCachedSessionRepository_Create(t *testing.T) {

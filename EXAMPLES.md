@@ -33,8 +33,8 @@ package main
 import (
 	"log"
 
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -290,9 +290,9 @@ Configure brute force protection:
 
 ```go
 import (
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/domain/security"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain/security"
 )
 
 auth, err := gobetterauth.New(&domain.Config{
@@ -596,8 +596,8 @@ import (
 	"log"
 	"os"
 
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -796,8 +796,8 @@ import (
 	"log"
 	"net/http"
 
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -831,8 +831,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -867,8 +867,8 @@ import (
 	"log"
 
 	"github.com/labstack/echo/v4"
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -903,8 +903,8 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -939,8 +939,8 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
-	gobetterauth "github.com/m-t-a97/go-better-auth"
-	"github.com/m-t-a97/go-better-auth/domain"
+	gobetterauth "github.com/GoBetterAuth/go-better-auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {

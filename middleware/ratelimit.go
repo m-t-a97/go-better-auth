@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/usecase/ratelimit"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/usecase/ratelimit"
 )
 
 // RateLimitMiddleware creates a middleware that enforces rate limiting

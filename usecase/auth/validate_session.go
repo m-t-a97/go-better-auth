@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/m-t-a97/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
 )
 
 // ValidateSessionRequest contains the request data for validating a session

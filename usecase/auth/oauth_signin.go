@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 	"github.com/google/uuid"
-	"github.com/m-t-a97/go-better-auth/domain/account"
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // OAuthSignInRequest represents a request to sign in via OAuth

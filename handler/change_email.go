@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/middleware"
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/middleware"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // ChangeEmailRequest is the HTTP request for requesting an email change

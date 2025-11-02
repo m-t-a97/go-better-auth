@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/domain/verification"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/verification"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 )
 
 // SignInRequest contains the request data for sign in

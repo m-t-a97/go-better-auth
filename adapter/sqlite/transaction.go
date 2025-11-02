@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/domain/verification"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/verification"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 )
 
 // SQLiteTransaction implements adapter.Transaction for SQLite

@@ -28,7 +28,7 @@ A comprehensive, framework-agnostic authentication and authorization library for
 ### Installation
 
 ```bash
-go get github.com/m-t-a97/go-better-auth
+go get github.com/GoBetterAuth/go-better-auth
 ```
 
 ### Basic Usage
@@ -42,8 +42,8 @@ import (
     "log"
     "net/http"
 
-    gobetterauth "github.com/m-t-a97/go-better-auth"
-    "github.com/m-t-a97/go-better-auth/domain"
+    gobetterauth "github.com/GoBetterAuth/go-better-auth"
+    "github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func main() {
@@ -769,7 +769,7 @@ JWT support with RS256 signing is available as a separate package. See the `jwt/
 ### Setup
 
 ```go
-import "github.com/m-t-a97/go-better-auth/jwt"
+import "github.com/GoBetterAuth/go-better-auth/jwt"
 
 // Create JWT manager with auto-generated RSA keys
 jwtManager, err := jwt.NewManager("https://example.com", []string{"https://example.com"})
@@ -838,7 +838,7 @@ import (
     "context"
     "net/http"
 
-    "github.com/m-t-a97/go-better-auth/plugin"
+    "github.com/GoBetterAuth/go-better-auth/plugin"
 )
 
 type CustomPlugin struct {
@@ -941,7 +941,7 @@ Apache 2.0 License - see LICENSE file for details
 
 ## 📞 Support
 
-- GitHub Issues: [Report bugs or request features](https://github.com/m-t-a97/go-better-auth/issues)
-- Documentation: [Full documentation](https://github.com/m-t-a97/go-better-auth/wiki)
+- GitHub Issues: [Report bugs or request features](https://github.com/GoBetterAuth/go-better-auth/issues)
+- Documentation: [Full documentation](https://github.com/GoBetterAuth/go-better-auth/wiki)
 
 ---

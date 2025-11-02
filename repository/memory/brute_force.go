@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/security"
+	"github.com/GoBetterAuth/go-better-auth/domain/security"
 )
 
 // InMemoryBruteForceRepository is an in-memory implementation of security.InMemoryBruteForceRepository

@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 // HooksMiddleware wraps an http.Handler with before/after hooks from config.

@@ -28,7 +28,7 @@ Avoid creating a public GitHub issue for security concerns. If you discover a se
 
 To request new features, please create an issue on this project.
 To ensure that we can understand the problem you are looking to solve, please be as detailed as possible.
-To see what other people have already suggested, you can look [here](https://github.com/m-t-a97/go-better-auth/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement).
+To see what other people have already suggested, you can look [here](https://github.com/GoBetterAuth/go-better-auth/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement).
 Please be aware that duplicate issues might already exist. If you are creating a new issue, please check existing open, or recently closed. Having a single vote for an issue is far easier for us to prioritise.
 
 ---

@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/storage"
-	"github.com/m-t-a97/go-better-auth/usecase/ratelimit"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/usecase/ratelimit"
 )
 
 func TestRateLimitMiddleware_Disabled(t *testing.T) {

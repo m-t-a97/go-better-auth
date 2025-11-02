@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // AuthHandler implements http.Handler for all auth endpoints

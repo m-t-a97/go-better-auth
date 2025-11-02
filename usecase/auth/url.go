@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 func (s *Service) buildVerificationURL(token string, callbackURL string) string {

@@ -8,11 +8,11 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"github.com/m-t-a97/go-better-auth/adapter"
-	"github.com/m-t-a97/go-better-auth/domain/account"
-	"github.com/m-t-a97/go-better-auth/domain/session"
-	"github.com/m-t-a97/go-better-auth/domain/user"
-	"github.com/m-t-a97/go-better-auth/domain/verification"
+	"github.com/GoBetterAuth/go-better-auth/adapter"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/verification"
 )
 
 // PostgresAdapter implements adapter.Adapter using PostgreSQL

@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 )
 
 // GetMeRequest contains the request data for getting user information

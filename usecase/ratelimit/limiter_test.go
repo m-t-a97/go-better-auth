@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/storage"
 )
 
 func TestLimiter_Check_AllowsRequests(t *testing.T) {

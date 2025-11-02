@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
-	"github.com/m-t-a97/go-better-auth/storage"
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
-	"github.com/m-t-a97/go-better-auth/validation"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/validation"
 )
 
 // OAuthHandler handles OAuth authentication endpoints

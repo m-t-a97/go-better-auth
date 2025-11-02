@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 // CORSMiddleware creates a CORS middleware that validates origins and sets appropriate headers.

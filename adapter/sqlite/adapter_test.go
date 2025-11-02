@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/adapter"
-	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/adapter"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/domain"
 )
 
 // TestHooksMiddleware_BeforeHookSuccess tests that the before hook is called and request proceeds

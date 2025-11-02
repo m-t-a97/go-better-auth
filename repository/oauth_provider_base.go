@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
 )
 
 // BaseOAuthProvider provides common OAuth2 functionality

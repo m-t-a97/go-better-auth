@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/m-t-a97/go-better-auth/domain/account"
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
 )
 
 // OAuthProviderRegistry implements account.OAuthProviderRegistry

@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/repository/memory"
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/repository/memory"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 	"github.com/stretchr/testify/assert"
 )
 

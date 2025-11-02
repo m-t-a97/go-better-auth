@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/verification"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/GoBetterAuth/go-better-auth/domain/verification"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 )
 
 // VerificationRepository implements verification.Repository for SQLite

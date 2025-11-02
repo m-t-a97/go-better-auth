@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 )
 
 // UserRepository implements user.Repository for PostgreSQL

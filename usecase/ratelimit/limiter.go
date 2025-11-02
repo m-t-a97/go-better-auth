@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/storage"
 )
 
 // Limiter provides rate limiting functionality using secondary storage

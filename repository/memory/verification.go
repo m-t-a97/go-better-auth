@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoBetterAuth/go-better-auth/domain/verification"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 	"github.com/google/uuid"
-	"github.com/m-t-a97/go-better-auth/domain/verification"
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
 )
 
 // VerificationRepository implements an in-memory verification repository

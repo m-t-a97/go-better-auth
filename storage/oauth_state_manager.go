@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/internal/crypto"
+	"github.com/GoBetterAuth/go-better-auth/internal/crypto"
 )
 
 // OAuthState represents an OAuth state parameter with metadata

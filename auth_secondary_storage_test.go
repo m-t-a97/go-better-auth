@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain"
-	"github.com/m-t-a97/go-better-auth/storage"
+	"github.com/GoBetterAuth/go-better-auth/domain"
+	"github.com/GoBetterAuth/go-better-auth/storage"
 )
 
 func TestAuth_WithSecondaryStorage_SessionCaching(t *testing.T) {

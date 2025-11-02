@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/user"
+	"github.com/GoBetterAuth/go-better-auth/domain/user"
 )
 
 // UpdateUserRequest contains the request data for updating a user

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // AuthMiddlewareFactory provides functions to create initialized middleware instances

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/usecase/auth"
+	"github.com/GoBetterAuth/go-better-auth/usecase/auth"
 )
 
 // ValidateSessionRequest is the HTTP request for validating a session

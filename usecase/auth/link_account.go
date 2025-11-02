@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/GoBetterAuth/go-better-auth/domain/account"
 	"github.com/google/uuid"
-	"github.com/m-t-a97/go-better-auth/domain/account"
 )
 
 // LinkOAuthAccountRequest represents a request to link an OAuth account to a user

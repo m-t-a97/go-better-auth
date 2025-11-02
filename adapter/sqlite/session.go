@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/m-t-a97/go-better-auth/domain/session"
+	"github.com/GoBetterAuth/go-better-auth/domain/session"
 )
 
 // SessionRepository implements session.Repository for SQLite

@@ -1,4 +1,4 @@
-module github.com/m-t-a97/go-better-auth
+module github.com/GoBetterAuth/go-better-auth
 
 go 1.25.0
 
